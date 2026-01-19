@@ -32,6 +32,8 @@ impl Card {
             if !name.starts_with("card") {
                 continue;
             }
+            let file = File::options().write(true).read(true).open(file.path())?;
+            return Ok(Self { file });
         }
         Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
@@ -66,6 +68,6 @@ pub fn resolutions() -> std::io::Result<Vec<String>> {
     Ok(connector
         .modes()
         .iter()
-        .map(|mode| format!("{}x{}", mode.size().0, mode.size().1))
+        .map(|mode| format!("{}x{} {}hz", mode.size().0, mode.size().1, mode.vrefresh()))
         .collect())
 }
