@@ -5,5 +5,8 @@ edition = "2024"
 
 [dependencies]
 drm = "0.14"
-gbm = "0.18"
+gbm = { version = "0.18", default-features = false, features = [
+    "drm-support",
+    "import-egl",
+] }
 khronos-egl = "6.0"
