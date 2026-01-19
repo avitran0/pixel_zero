@@ -1,6 +1,5 @@
 [workspace]
-members = ["api", "launcher"]
+members = ["launcher"]
 resolver = "3"
 
 [workspace.dependencies]
-api = { path = "api" }

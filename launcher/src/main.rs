@@ -1,3 +1,5 @@
+mod graphics;
+
 fn main() {
-    dbg!(api::graphics::resolutions().unwrap());
+    dbg!(graphics::resolutions().unwrap());
 }
