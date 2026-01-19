@@ -4,9 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+api = { workspace = true }
+anyhow = { workspace = true }
+glam = { workspace = true }
 drm = "0.14"
 gbm = { version = "0.18", default-features = false, features = [
     "drm-support",
     "import-egl",
 ] }
-khronos-egl = "6.0"
+khronos-egl = { version = "6.0", features = ["static"] }
