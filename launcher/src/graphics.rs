@@ -129,7 +129,8 @@ impl Egl {
             egl::NONE,
         ];
 
-        
+        let mut configs = Vec::with_capacity(8);
+        egl.choose_config(display, &config_attributes, &mut configs);
     }
 }
 
