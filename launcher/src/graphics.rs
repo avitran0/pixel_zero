@@ -18,6 +18,7 @@ use drm::{
         framebuffer,
     },
 };
+use egui::RawInput;
 use gbm::{
     AsRaw as _, BufferObject, BufferObjectFlags, Device as GbmDevice, Surface as GbmSurface,
 };
@@ -31,18 +32,21 @@ pub struct GraphicsContext {
 
     framebuffer: Option<framebuffer::Handle>,
     buffer_object: Option<BufferObject<()>>,
+
+    raw_input: egui::RawInput,
+    context: egui::Context,
 }
 
 static LOADED: AtomicBool = AtomicBool::new(false);
 impl GraphicsContext {
     pub fn load() -> anyhow::Result<Self> {
-        if LOADED.load(Ordering::Relaxed) {
+        if LOADED.swap(true, Ordering::Relaxed) {
             return Err(anyhow::anyhow!("GraphicsContext already loaded"));
         }
 
         let drm = Drm::load()?;
         let gbm = Gbm::load(&drm)?;
-        let egl = Egl::load(&gbm)?;
+        let egl = Egl::load(&gbm, drm.size())?;
 
         let buffer_object = unsafe { gbm.surface.lock_front_buffer() }?;
         let bpp = buffer_object.bpp();
@@ -55,7 +59,8 @@ impl GraphicsContext {
             Some(drm.mode),
         )?;
 
-        LOADED.store(true, Ordering::Relaxed);
+        let raw_input = RawInput::default();
+        let context = egui::Context::default();
 
         Ok(Self {
             drm,
@@ -63,12 +68,14 @@ impl GraphicsContext {
             egl,
             framebuffer: Some(framebuffer),
             buffer_object: Some(buffer_object),
+            raw_input,
+            context,
         })
     }
 
     pub fn clear(&self) {
         unsafe {
-            gl::ClearColor(0.2, 0.5, 1.0, 1.0);
+            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT)
         };
     }
@@ -197,7 +204,7 @@ struct Egl {
 }
 
 impl Egl {
-    pub fn load(gbm: &Gbm) -> anyhow::Result<Self> {
+    pub fn load(gbm: &Gbm, size: UVec2) -> anyhow::Result<Self> {
         let egl = egl::Instance::new(egl::Static);
         let display = unsafe { egl.get_display(gbm.device.as_raw() as *mut _) }
             .ok_or(anyhow::anyhow!("No EGL Display found"))?;
@@ -221,14 +228,15 @@ impl Egl {
         let mut configs = Vec::with_capacity(8);
         egl.choose_config(display, &config_attributes, &mut configs)?;
 
-        let config = configs
-            .into_iter()
-            .find(|c| {
+        let config = *configs
+            .iter()
+            .find(|&c| {
                 let buffer_size = egl
                     .get_config_attrib(display, *c, egl::BUFFER_SIZE)
                     .unwrap_or_default();
                 buffer_size == 24
             })
+            .or_else(|| configs.first())
             .ok_or(anyhow::anyhow!("No suitable EGL config found",))?;
 
         let context_attributes = [
@@ -246,6 +254,8 @@ impl Egl {
         egl.make_current(display, Some(surface), Some(surface), Some(context))?;
 
         gl::load_with(|s| egl.get_proc_address(s).unwrap() as *const _);
+
+        unsafe { gl::Viewport(0, 0, size.x as i32, size.y as i32) };
 
         egl.swap_buffers(display, surface)?;
 
