@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use gbm::{BufferObjectFlags, Device, Surface};
 
-use crate::graphics::drm::{Drm, Gpu};
+use crate::platform::drm::{Drm, Gpu};
 
 pub struct Gbm {
     device: Device<Arc<Gpu>>,

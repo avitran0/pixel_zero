@@ -2,7 +2,12 @@
 #[link(name = "GLESv2")]
 unsafe extern "C" {}*/
 
-mod graphics;
+use crate::platform::GraphicsContext;
+
+mod platform;
 
 fn main() {
+    let mut graphics = GraphicsContext::load().unwrap();
+    graphics.clear();
+    graphics.present().unwrap();
 }

@@ -2,7 +2,7 @@ use gbm::AsRaw as _;
 use glam::UVec2;
 use khronos_egl::{self as egl, Config, Context, Display, Instance, Static, Surface};
 
-use crate::graphics::gbm::Gbm;
+use crate::platform::gbm::Gbm;
 
 pub struct Egl {
     instance: Instance<Static>,
@@ -83,10 +83,6 @@ impl Egl {
 
     pub fn display(&self) -> Display {
         self.display
-    }
-
-    pub fn context(&self) -> Context {
-        self.context
     }
 
     pub fn surface(&self) -> Surface {

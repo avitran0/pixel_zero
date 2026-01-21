@@ -1,32 +1,24 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer};
-use ::gbm::{
-    AsRaw as _, BufferObject, BufferObjectFlags, Device as GbmDevice, Surface as GbmSurface,
-};
+use ::gbm::BufferObject;
 use api::graphics::Graphics;
-use egui::RawInput;
-use glam::UVec2;
 
-use crate::graphics::{drm::Drm, egl::Egl, gbm::Gbm};
+use crate::platform::{drm::Drm, egl::Egl, gbm::Gbm};
 
 mod drm;
 mod egl;
+mod egui;
 mod gbm;
+mod input;
 
 pub struct GraphicsContext {
     drm: Drm,
     gbm: Gbm,
     egl: Egl,
 
-    framebuffer: Option<framebuffer::Handle>,
-    buffer_object: Option<BufferObject<()>>,
-
-    raw_input: egui::RawInput,
-    context: egui::Context,
+    framebuffer: framebuffer::Handle,
+    buffer_object: BufferObject<()>,
 }
 
 static LOADED: AtomicBool = AtomicBool::new(false);
@@ -51,17 +43,12 @@ impl GraphicsContext {
             Some(*drm.mode()),
         )?;
 
-        let raw_input = RawInput::default();
-        let context = egui::Context::default();
-
         Ok(Self {
             drm,
             gbm,
             egl,
-            framebuffer: Some(framebuffer),
-            buffer_object: Some(buffer_object),
-            raw_input,
-            context,
+            framebuffer,
+            buffer_object,
         })
     }
 
@@ -94,12 +81,10 @@ impl GraphicsContext {
             }
         }
 
-        if let Some(framebuffer) = &self.framebuffer {
-            self.drm.gpu().destroy_framebuffer(*framebuffer)?;
-        }
+        self.drm.gpu().destroy_framebuffer(self.framebuffer)?;
 
-        self.buffer_object = Some(buffer_object);
-        self.framebuffer = Some(framebuffer);
+        self.buffer_object = buffer_object;
+        self.framebuffer = framebuffer;
 
         Ok(())
     }
