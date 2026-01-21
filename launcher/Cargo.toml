@@ -7,11 +7,4 @@ edition = "2024"
 api = { workspace = true }
 anyhow = { workspace = true }
 glam = { workspace = true }
-drm = "0.14"
-gbm = { version = "0.18", default-features = false, features = [
-    "drm-support",
-    "import-egl",
-] }
-khronos-egl = { version = "6.0", features = ["static"] }
-gl = "0.14"
-egui = "0.33"
+ratatui = "0.30"

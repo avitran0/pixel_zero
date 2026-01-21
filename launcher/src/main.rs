@@ -1,13 +1,8 @@
-/*#[link(name = "EGL")]
-#[link(name = "GLESv2")]
-unsafe extern "C" {}*/
+use crate::launcher::Launcher;
 
-use crate::platform::GraphicsContext;
-
-mod platform;
+mod launcher;
+mod screen;
 
 fn main() {
-    let mut graphics = GraphicsContext::load().unwrap();
-    graphics.clear();
-    graphics.present().unwrap();
+    ratatui::run(|terminal| Launcher::new().run(terminal)).unwrap();
 }

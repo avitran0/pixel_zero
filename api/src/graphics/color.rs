@@ -18,7 +18,3 @@ impl Color {
         Self { r, g, b, a }
     }
 }
-
-pub trait Graphics {
-    fn clear(&self, color: Color);
-}

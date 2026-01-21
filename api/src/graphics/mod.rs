@@ -2,15 +2,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer};
 use ::gbm::BufferObject;
-use api::graphics::Graphics;
 
-use crate::platform::{drm::Drm, egl::Egl, gbm::Gbm};
+use crate::graphics::{drm::Drm, egl::Egl, gbm::Gbm};
 
+pub mod color;
 mod drm;
 mod egl;
-mod egui;
 mod gbm;
-mod input;
 
 pub struct GraphicsContext {
     drm: Drm,
@@ -88,8 +86,4 @@ impl GraphicsContext {
 
         Ok(())
     }
-}
-
-impl Graphics for GraphicsContext {
-    fn clear(&self, color: api::graphics::Color) {}
 }
