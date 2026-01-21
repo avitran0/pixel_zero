@@ -13,3 +13,4 @@ gbm = { version = "0.18", default-features = false, features = [
     "import-egl",
 ] }
 khronos-egl = { version = "6.0", features = ["static"] }
+gl = "0.14"

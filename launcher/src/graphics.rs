@@ -4,24 +4,107 @@ use std::{
         fd::{AsFd, BorrowedFd},
         unix::fs::FileTypeExt,
     },
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use api::graphics::Graphics;
 use drm::{
     Device as DrmDevice,
-    control::{Device as ControlDevice, Mode, ModeTypeFlags, connector, crtc},
+    control::{
+        Device as ControlDevice, Event, Mode, ModeTypeFlags, PageFlipFlags, connector, crtc,
+        framebuffer,
+    },
 };
-use gbm::{AsRaw as _, BufferObjectFlags, Device as GbmDevice, Surface as GbmSurface};
+use gbm::{
+    AsRaw as _, BufferObject, BufferObjectFlags, Device as GbmDevice, Surface as GbmSurface,
+};
 use glam::UVec2;
 use khronos_egl as egl;
 
 pub struct GraphicsContext {
     drm: Drm,
     gbm: Gbm,
+    egl: Egl,
+
+    framebuffer: Option<framebuffer::Handle>,
+    buffer_object: Option<BufferObject<()>>,
 }
 
-impl GraphicsContext {}
+static LOADED: AtomicBool = AtomicBool::new(false);
+impl GraphicsContext {
+    pub fn load() -> anyhow::Result<Self> {
+        if LOADED.load(Ordering::Relaxed) {
+            return Err(anyhow::anyhow!("GraphicsContext already loaded"));
+        }
+
+        let drm = Drm::load()?;
+        let gbm = Gbm::load(&drm)?;
+        let egl = Egl::load(&gbm)?;
+
+        let buffer_object = unsafe { gbm.surface.lock_front_buffer() }?;
+        let bpp = buffer_object.bpp();
+        let framebuffer = drm.gpu.add_framebuffer(&buffer_object, bpp, bpp)?;
+        drm.gpu.set_crtc(
+            drm.crtc.handle(),
+            Some(framebuffer),
+            (0, 0),
+            &[drm.connector.handle()],
+            Some(drm.mode),
+        )?;
+
+        LOADED.store(true, Ordering::Relaxed);
+
+        Ok(Self {
+            drm,
+            gbm,
+            egl,
+            framebuffer: Some(framebuffer),
+            buffer_object: Some(buffer_object),
+        })
+    }
+
+    pub fn clear(&self) {
+        unsafe {
+            gl::ClearColor(0.2, 0.5, 1.0, 1.0);
+            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT)
+        };
+    }
+
+    pub fn present(&mut self) -> anyhow::Result<()> {
+        self.egl
+            .egl
+            .swap_buffers(self.egl.display, self.egl.surface)?;
+
+        let buffer_object = unsafe { self.gbm.surface.lock_front_buffer() }?;
+        let bpp = buffer_object.bpp();
+        let framebuffer = self.drm.gpu.add_framebuffer(&buffer_object, bpp, bpp)?;
+
+        self.drm.gpu.page_flip(
+            self.drm.crtc.handle(),
+            framebuffer,
+            PageFlipFlags::EVENT,
+            None,
+        )?;
+        let events = self.drm.gpu.receive_events()?;
+        for event in events {
+            if let Event::PageFlip(event) = event {
+                // todo
+            }
+        }
+
+        if let Some(framebuffer) = &self.framebuffer {
+            self.drm.gpu.destroy_framebuffer(*framebuffer)?;
+        }
+
+        self.buffer_object = Some(buffer_object);
+        self.framebuffer = Some(framebuffer);
+
+        Ok(())
+    }
+}
 
 impl Graphics for GraphicsContext {
     fn clear(&self, color: api::graphics::Color) {}
@@ -105,15 +188,21 @@ impl Gbm {
     }
 }
 
-struct Egl {}
+struct Egl {
+    egl: egl::Instance<egl::Static>,
+    display: egl::Display,
+    config: egl::Config,
+    context: egl::Context,
+    surface: egl::Surface,
+}
 
 impl Egl {
     pub fn load(gbm: &Gbm) -> anyhow::Result<Self> {
         let egl = egl::Instance::new(egl::Static);
         let display = unsafe { egl.get_display(gbm.device.as_raw() as *mut _) }
-            .ok_or(|| anyhow::anyhow!("No EGL Display found"))?;
+            .ok_or(anyhow::anyhow!("No EGL Display found"))?;
         let egl_version = egl.initialize(display)?;
-        egl.bind_api(egl::OPENGL_ES_API);
+        egl.bind_api(egl::OPENGL_ES_API)?;
 
         let config_attributes = [
             egl::RED_SIZE,
@@ -130,7 +219,43 @@ impl Egl {
         ];
 
         let mut configs = Vec::with_capacity(8);
-        egl.choose_config(display, &config_attributes, &mut configs);
+        egl.choose_config(display, &config_attributes, &mut configs)?;
+
+        let config = configs
+            .into_iter()
+            .find(|c| {
+                let buffer_size = egl
+                    .get_config_attrib(display, *c, egl::BUFFER_SIZE)
+                    .unwrap_or_default();
+                buffer_size == 24
+            })
+            .ok_or(anyhow::anyhow!("No suitable EGL config found",))?;
+
+        let context_attributes = [
+            egl::CONTEXT_MAJOR_VERSION,
+            3,
+            egl::CONTEXT_MINOR_VERSION,
+            2,
+            egl::NONE,
+        ];
+
+        let context = egl.create_context(display, config, None, &context_attributes)?;
+        let surface = unsafe {
+            egl.create_window_surface(display, config, gbm.surface.as_raw() as *mut _, None)
+        }?;
+        egl.make_current(display, Some(surface), Some(surface), Some(context))?;
+
+        gl::load_with(|s| egl.get_proc_address(s).unwrap() as *const _);
+
+        egl.swap_buffers(display, surface)?;
+
+        Ok(Self {
+            egl,
+            display,
+            config,
+            context,
+            surface,
+        })
     }
 }
 
