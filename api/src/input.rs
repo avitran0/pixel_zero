@@ -1,4 +1,6 @@
-use std::{fs::File, os::unix::fs::FileTypeExt};
+use std::{fs::File, io::Read, os::unix::fs::FileTypeExt};
+
+const EV_KEY: u16 = 0x01;
 
 pub struct Input {
     device_files: Vec<File>,
@@ -39,6 +41,22 @@ impl Input {
             devices.push(file);
         }
         devices
+    }
+
+    fn read(&self) {
+        for mut device in &self.device_files {
+            let mut buf = vec![0u8; size_of::<InputEvent>()];
+            while device.read_exact(&mut buf).is_ok() {
+                let event = unsafe {
+                    let ptr = buf.as_ptr() as *const InputEvent;
+                    &*ptr
+                };
+
+                if event.kind != EV_KEY {
+                    continue;
+                }
+            }
+        }
     }
 }
 
