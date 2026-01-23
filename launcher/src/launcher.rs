@@ -1,4 +1,7 @@
-use api::{graphics::GraphicsContext, input::Input};
+use api::{
+    graphics::GraphicsContext,
+    input::{Button, Input},
+};
 
 use crate::screen::{Screen, game_menu::GameMenu};
 
@@ -21,6 +24,10 @@ impl Launcher {
 
     pub fn run(&mut self) {
         while !self.exit {
+            self.input.update();
+            if self.input.just_pressed(Button::A) {
+                self.exit = true;
+            }
             self.screen.update(&self.input);
             self.graphics.clear();
             self.screen.render(&self.graphics);
