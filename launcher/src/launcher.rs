@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use api::{
-    graphics::GraphicsContext,
+    graphics::Graphics,
     input::{Button, Input},
 };
 
@@ -10,7 +10,7 @@ use crate::screen::{Screen, game_menu::GameMenu};
 const TIME: Duration = Duration::from_secs(5);
 
 pub struct Launcher {
-    graphics: GraphicsContext,
+    graphics: Graphics,
     input: Input,
     screen: Box<dyn Screen>,
     start: Instant,
@@ -20,7 +20,7 @@ pub struct Launcher {
 impl Launcher {
     pub fn new() -> Self {
         Self {
-            graphics: GraphicsContext::load().unwrap(),
+            graphics: Graphics::load().unwrap(),
             input: Input::default(),
             screen: Box::new(GameMenu::new()),
             start: Instant::now(),

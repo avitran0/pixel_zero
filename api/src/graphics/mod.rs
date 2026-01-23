@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer};
+use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer as drmfb};
 use ::gbm::BufferObject;
 
 use crate::graphics::{drm::Drm, egl::Egl, gbm::Gbm};
@@ -8,19 +8,22 @@ use crate::graphics::{drm::Drm, egl::Egl, gbm::Gbm};
 pub mod color;
 mod drm;
 mod egl;
+mod framebuffer;
 mod gbm;
+mod shader;
+mod texture;
 
-pub struct GraphicsContext {
+pub struct Graphics {
     drm: Drm,
     gbm: Gbm,
     egl: Egl,
 
-    framebuffer: framebuffer::Handle,
+    framebuffer: drmfb::Handle,
     buffer_object: BufferObject<()>,
 }
 
 static LOADED: AtomicBool = AtomicBool::new(false);
-impl GraphicsContext {
+impl Graphics {
     pub fn load() -> anyhow::Result<Self> {
         if LOADED.swap(true, Ordering::Relaxed) {
             return Err(anyhow::anyhow!("GraphicsContext already loaded"));

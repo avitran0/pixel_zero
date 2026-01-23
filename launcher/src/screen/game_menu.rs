@@ -1,4 +1,4 @@
-use api::{graphics::GraphicsContext, input::Input};
+use api::{graphics::Graphics, input::Input};
 
 use crate::screen::Screen;
 
@@ -13,5 +13,5 @@ impl GameMenu {
 impl Screen for GameMenu {
     fn update(&mut self, input: &Input) {}
 
-    fn render(&self, graphics: &GraphicsContext) {}
+    fn render(&self, graphics: &Graphics) {}
 }
