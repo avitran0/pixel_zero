@@ -1,4 +1,9 @@
-use std::{collections::HashMap, fs::File, io::Read, os::unix::fs::FileTypeExt};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::Read,
+    os::unix::fs::{FileTypeExt, OpenOptionsExt},
+};
 
 const EV_KEY: u16 = 0x01;
 
@@ -100,7 +105,11 @@ impl Input {
                 continue;
             }
 
-            let Ok(file) = File::open(entry.path()) else {
+            let Ok(file) = File::options()
+                .read(true)
+                .custom_flags(libc::O_NONBLOCK)
+                .open(entry.path())
+            else {
                 continue;
             };
             devices.push(file);
@@ -149,7 +158,7 @@ impl Input {
                     BTN_TL => Button::L,
                     BTN_TR => Button::R,
 
-                    _ => return,
+                    _ => continue,
                 };
 
                 let state = if event.value == 0 {

@@ -29,7 +29,7 @@ impl Launcher {
     }
 
     pub fn run(&mut self) {
-        while !self.exit || self.start.elapsed() > TIME {
+        while !self.exit && self.start.elapsed() < TIME {
             self.input.update();
             if self.input.just_pressed(Button::A) {
                 println!("exiting");
