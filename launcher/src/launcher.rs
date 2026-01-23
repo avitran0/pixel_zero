@@ -32,6 +32,7 @@ impl Launcher {
         while !self.exit || self.start.elapsed() > TIME {
             self.input.update();
             if self.input.just_pressed(Button::A) {
+                println!("exiting");
                 self.exit = true;
             }
             self.screen.update(&self.input);
