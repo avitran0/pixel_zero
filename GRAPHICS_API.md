@@ -1,14 +1,24 @@
 # 2D Sprite-Based Graphics API
 
-This graphics API provides a simple, GBA-like 2D sprite rendering system with a fixed 320x240 framebuffer that is automatically letterboxed to fit any display size.
+This graphics API provides a simple, GBA-like 2D sprite rendering system with a fixed 320x240 framebuffer that is automatically letterboxed to fit any display size. All rendering is done using OpenGL ES for hardware acceleration.
 
 ## Features
 
-- **Fixed Resolution**: 320x240 virtual framebuffer (GBA resolution)
+- **Fixed Resolution**: 320x240 rendering target (GBA resolution)
 - **Automatic Letterboxing**: Content is scaled and centered on any display size
-- **Sprite Rendering**: Draw sprites with alpha transparency
+- **Sprite Rendering**: Draw sprites with alpha transparency using OpenGL textures
 - **Bitmap Font Support**: Render text using bitmap fonts
-- **Software Rendering**: CPU-based pixel manipulation for simplicity
+- **Hardware Accelerated**: All rendering is done via OpenGL ES primitives and shaders
+- **Framebuffer Object**: Uses OpenGL FBO for off-screen 320x240 rendering
+
+## Technical Details
+
+- The rendering target is a 320x240 OpenGL framebuffer object (FBO)
+- Sprites are uploaded as OpenGL textures and rendered as textured quads
+- Text is rendered by drawing individual glyph sprites
+- The FBO is then rendered to the screen with letterboxing and nearest-neighbor filtering
+- Alpha blending is handled natively by OpenGL
+- All rendering uses OpenGL ES 3.2 shaders
 
 ## Basic Usage
 
@@ -153,12 +163,19 @@ RGBA color representation.
 
 ## Technical Details
 
-- The virtual framebuffer is 320x240 pixels (4:3 aspect ratio, like the GBA)
-- Pixel data is stored as RGBA in a contiguous buffer
-- Sprites support alpha blending
-- The framebuffer is uploaded to an OpenGL texture and rendered with nearest-neighbor filtering
-- Letterboxing is calculated based on screen aspect ratio to maintain 4:3 ratio
-- Drawing is done in software (CPU) for simplicity, with GPU used only for final presentation
+- The rendering target is a 320x240 OpenGL framebuffer object (FBO)
+- Sprites are uploaded as OpenGL textures and rendered as textured quads
+- Text is rendered by drawing individual glyph sprites
+- The FBO is then rendered to the screen with letterboxing and nearest-neighbor filtering
+- Alpha blending is handled natively by OpenGL
+- All rendering uses OpenGL ES 3.2 shaders
+
+## Performance Considerations
+
+- Sprites are uploaded to GPU memory each time they're drawn
+- For frequently used sprites, consider caching them on the CPU side
+- The 320x240 resolution keeps rendering lightweight even without complex optimization
+- Text rendering may create temporary textures for each glyph
 
 ## Custom Fonts
 
