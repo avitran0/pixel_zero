@@ -130,13 +130,16 @@ impl Drm {
 impl Drop for Drm {
     fn drop(&mut self) {
         if let Some(state) = &self.original_state {
-            let _ = self.gpu.set_crtc(
+            // Restore the original CRTC state
+            if let Err(e) = self.gpu.set_crtc(
                 state.crtc.handle(),
                 state.framebuffer,
                 state.crtc.position(),
                 &state.connectors,
                 state.mode,
-            );
+            ) {
+                eprintln!("Failed to restore original CRTC state: {:?}", e);
+            }
         }
     }
 }

@@ -87,3 +87,15 @@ impl GraphicsContext {
         Ok(())
     }
 }
+
+impl Drop for GraphicsContext {
+    fn drop(&mut self) {
+        // Clean up framebuffer before Drm is dropped
+        if let Err(e) = self.drm.gpu().destroy_framebuffer(self.framebuffer) {
+            eprintln!("Failed to destroy framebuffer: {:?}", e);
+        }
+        
+        // Reset the atomic flag so GraphicsContext can be loaded again
+        LOADED.store(false, Ordering::Relaxed);
+    }
+}
