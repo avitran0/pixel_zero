@@ -20,8 +20,9 @@ const FB_HEIGHT: u32 = 240;
 /// Graphics context that provides low-level access to the display and
 /// a 2D sprite-based rendering API similar to the Game Boy Advance.
 ///
-/// The virtual framebuffer is 320x240 pixels and is automatically letterboxed
-/// to fit the physical display while maintaining the correct aspect ratio.
+/// The rendering target is 320x240 pixels (using OpenGL FBO) and is automatically 
+/// letterboxed to fit the physical display while maintaining the correct aspect ratio.
+/// All rendering is done using OpenGL ES primitives and textures.
 pub struct GraphicsContext {
     drm: Drm,
     gbm: Gbm,
@@ -30,13 +31,13 @@ pub struct GraphicsContext {
     framebuffer: framebuffer::Handle,
     buffer_object: BufferObject<()>,
 
-    // 2D rendering state
-    virtual_framebuffer: Vec<Color>,
-    rgba_buffer: Vec<u8>,  // Pre-allocated buffer for RGBA conversion
-    texture: u32,
-    shader_program: u32,
-    vao: u32,
-    vbo: u32,
+    // OpenGL rendering state
+    fbo: u32,              // Framebuffer object for 320x240 rendering
+    fbo_texture: u32,      // Color attachment for FBO
+    sprite_shader: u32,    // Shader for rendering sprites
+    screen_shader: u32,    // Shader for rendering FBO to screen
+    quad_vao: u32,         // VAO for rendering quads
+    quad_vbo: u32,         // VBO for quad vertices
 }
 
 static LOADED: AtomicBool = AtomicBool::new(false);
@@ -62,9 +63,8 @@ impl GraphicsContext {
         )?;
 
         // Initialize 2D rendering resources
-        let virtual_framebuffer = vec![Color::BLACK; (FB_WIDTH * FB_HEIGHT) as usize];
-        let rgba_buffer = vec![0u8; (FB_WIDTH * FB_HEIGHT * 4) as usize];
-        let (texture, shader_program, vao, vbo) = unsafe { Self::init_2d_resources()? };
+        let (fbo, fbo_texture, sprite_shader, screen_shader, quad_vao, quad_vbo) = 
+            unsafe { Self::init_2d_resources()? };
 
         Ok(Self {
             drm,
@@ -72,70 +72,79 @@ impl GraphicsContext {
             egl,
             framebuffer,
             buffer_object,
-            virtual_framebuffer,
-            rgba_buffer,
-            texture,
-            shader_program,
-            vao,
-            vbo,
+            fbo,
+            fbo_texture,
+            sprite_shader,
+            screen_shader,
+            quad_vao,
+            quad_vbo,
         })
     }
 
-    unsafe fn init_2d_resources() -> anyhow::Result<(u32, u32, u32, u32)> {
-        // Create texture for the virtual framebuffer
-        let mut texture = 0;
-        gl::GenTextures(1, &mut texture);
-        gl::BindTexture(gl::TEXTURE_2D, texture);
+    unsafe fn init_2d_resources() -> anyhow::Result<(u32, u32, u32, u32, u32, u32)> {
+        // Create framebuffer object for 320x240 rendering
+        let mut fbo = 0;
+        gl::GenFramebuffers(1, &mut fbo);
+        gl::BindFramebuffer(gl::FRAMEBUFFER, fbo);
+
+        // Create texture for FBO color attachment
+        let mut fbo_texture = 0;
+        gl::GenTextures(1, &mut fbo_texture);
+        gl::BindTexture(gl::TEXTURE_2D, fbo_texture);
+        gl::TexImage2D(
+            gl::TEXTURE_2D,
+            0,
+            gl::RGBA as i32,
+            FB_WIDTH as i32,
+            FB_HEIGHT as i32,
+            0,
+            gl::RGBA,
+            gl::UNSIGNED_BYTE,
+            std::ptr::null(),
+        );
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
 
-        // Create shader program
-        let vertex_shader = Self::compile_shader(gl::VERTEX_SHADER, VERTEX_SHADER_SRC)?;
-        let fragment_shader = Self::compile_shader(gl::FRAGMENT_SHADER, FRAGMENT_SHADER_SRC)?;
-        let shader_program = gl::CreateProgram();
-        gl::AttachShader(shader_program, vertex_shader);
-        gl::AttachShader(shader_program, fragment_shader);
-        gl::LinkProgram(shader_program);
+        // Attach texture to FBO
+        gl::FramebufferTexture2D(
+            gl::FRAMEBUFFER,
+            gl::COLOR_ATTACHMENT0,
+            gl::TEXTURE_2D,
+            fbo_texture,
+            0,
+        );
 
-        // Check link status
-        let mut success = 0;
-        gl::GetProgramiv(shader_program, gl::LINK_STATUS, &mut success);
-        if success == 0 {
-            return Err(anyhow::anyhow!("Failed to link shader program"));
+        // Check FBO status
+        let status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
+        if status != gl::FRAMEBUFFER_COMPLETE {
+            return Err(anyhow::anyhow!("Framebuffer is not complete: {}", status));
         }
 
-        gl::DeleteShader(vertex_shader);
-        gl::DeleteShader(fragment_shader);
+        gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
 
-        // Create VAO and VBO for a fullscreen quad
-        let mut vao = 0;
-        let mut vbo = 0;
-        gl::GenVertexArrays(1, &mut vao);
-        gl::GenBuffers(1, &mut vbo);
+        // Create sprite shader (for textured quads)
+        let sprite_shader = Self::create_sprite_shader()?;
+        
+        // Create screen shader (for rendering FBO to screen)
+        let screen_shader = Self::create_screen_shader()?;
 
-        gl::BindVertexArray(vao);
-        gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
+        // Create VAO and VBO for rendering quads
+        let mut quad_vao = 0;
+        let mut quad_vbo = 0;
+        gl::GenVertexArrays(1, &mut quad_vao);
+        gl::GenBuffers(1, &mut quad_vbo);
 
-        // Fullscreen quad vertices (position + texcoord)
-        #[rustfmt::skip]
-        let vertices: [f32; 24] = [
-            // positions   // texcoords
-            -1.0,  1.0,    0.0, 0.0,
-            -1.0, -1.0,    0.0, 1.0,
-             1.0, -1.0,    1.0, 1.0,
+        gl::BindVertexArray(quad_vao);
+        gl::BindBuffer(gl::ARRAY_BUFFER, quad_vbo);
 
-            -1.0,  1.0,    0.0, 0.0,
-             1.0, -1.0,    1.0, 1.0,
-             1.0,  1.0,    1.0, 0.0,
-        ];
-
+        // Reserve space for dynamic quad vertices (will be updated per draw call)
         gl::BufferData(
             gl::ARRAY_BUFFER,
-            (vertices.len() * std::mem::size_of::<f32>()) as isize,
-            vertices.as_ptr() as *const _,
-            gl::STATIC_DRAW,
+            (24 * std::mem::size_of::<f32>()) as isize,
+            std::ptr::null(),
+            gl::DYNAMIC_DRAW,
         );
 
         // Position attribute
@@ -153,7 +162,45 @@ impl GraphicsContext {
         gl::Enable(gl::BLEND);
         gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
 
-        Ok((texture, shader_program, vao, vbo))
+        Ok((fbo, fbo_texture, sprite_shader, screen_shader, quad_vao, quad_vbo))
+    }
+
+    unsafe fn create_sprite_shader() -> anyhow::Result<u32> {
+        let vertex_shader = Self::compile_shader(gl::VERTEX_SHADER, SPRITE_VERTEX_SHADER)?;
+        let fragment_shader = Self::compile_shader(gl::FRAGMENT_SHADER, SPRITE_FRAGMENT_SHADER)?;
+        let program = gl::CreateProgram();
+        gl::AttachShader(program, vertex_shader);
+        gl::AttachShader(program, fragment_shader);
+        gl::LinkProgram(program);
+
+        let mut success = 0;
+        gl::GetProgramiv(program, gl::LINK_STATUS, &mut success);
+        if success == 0 {
+            return Err(anyhow::anyhow!("Failed to link sprite shader program"));
+        }
+
+        gl::DeleteShader(vertex_shader);
+        gl::DeleteShader(fragment_shader);
+        Ok(program)
+    }
+
+    unsafe fn create_screen_shader() -> anyhow::Result<u32> {
+        let vertex_shader = Self::compile_shader(gl::VERTEX_SHADER, SCREEN_VERTEX_SHADER)?;
+        let fragment_shader = Self::compile_shader(gl::FRAGMENT_SHADER, SCREEN_FRAGMENT_SHADER)?;
+        let program = gl::CreateProgram();
+        gl::AttachShader(program, vertex_shader);
+        gl::AttachShader(program, fragment_shader);
+        gl::LinkProgram(program);
+
+        let mut success = 0;
+        gl::GetProgramiv(program, gl::LINK_STATUS, &mut success);
+        if success == 0 {
+            return Err(anyhow::anyhow!("Failed to link screen shader program"));
+        }
+
+        gl::DeleteShader(vertex_shader);
+        gl::DeleteShader(fragment_shader);
+        Ok(program)
     }
 
     unsafe fn compile_shader(shader_type: u32, source: &str) -> anyhow::Result<u32> {
@@ -183,48 +230,100 @@ impl GraphicsContext {
         };
     }
 
-    /// Clear the virtual framebuffer with a color
+    /// Clear the framebuffer with a color
     pub fn clear_framebuffer(&mut self, color: Color) {
-        self.virtual_framebuffer.fill(color);
+        unsafe {
+            // Bind FBO and clear it
+            gl::BindFramebuffer(gl::FRAMEBUFFER, self.fbo);
+            let rgba = color.as_f32_array();
+            gl::ClearColor(rgba[0], rgba[1], rgba[2], rgba[3]);
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+        }
     }
 
-    /// Draw a sprite to the virtual framebuffer at the given position
+    /// Draw a sprite at the given position using OpenGL
     pub fn draw_sprite(&mut self, sprite: &Sprite, x: i32, y: i32) {
-        for sy in 0..sprite.height() {
-            for sx in 0..sprite.width() {
-                let dest_x = x + sx as i32;
-                let dest_y = y + sy as i32;
+        unsafe {
+            // Bind to FBO for rendering
+            gl::BindFramebuffer(gl::FRAMEBUFFER, self.fbo);
+            gl::Viewport(0, 0, FB_WIDTH as i32, FB_HEIGHT as i32);
 
-                // Clip to framebuffer bounds
-                if dest_x < 0 || dest_x >= FB_WIDTH as i32 || dest_y < 0 || dest_y >= FB_HEIGHT as i32 {
-                    continue;
-                }
-
-                if let Some(pixel) = sprite.get_pixel(sx, sy) {
-                    // Skip fully transparent pixels
-                    if pixel.a() == 0 {
-                        continue;
-                    }
-
-                    let index = (dest_y as u32 * FB_WIDTH + dest_x as u32) as usize;
-                    if index < self.virtual_framebuffer.len() {
-                        // Simple alpha blending
-                        if pixel.a() == 255 {
-                            self.virtual_framebuffer[index] = pixel;
-                        } else {
-                            let dst = self.virtual_framebuffer[index];
-                            let alpha = pixel.a() as f32 / 255.0;
-                            let inv_alpha = 1.0 - alpha;
-                            self.virtual_framebuffer[index] = Color::rgba(
-                                ((pixel.r() as f32 * alpha + dst.r() as f32 * inv_alpha) as u8),
-                                ((pixel.g() as f32 * alpha + dst.g() as f32 * inv_alpha) as u8),
-                                ((pixel.b() as f32 * alpha + dst.b() as f32 * inv_alpha) as u8),
-                                255,
-                            );
-                        }
-                    }
-                }
+            // Create texture from sprite data
+            let mut texture = 0;
+            gl::GenTextures(1, &mut texture);
+            gl::BindTexture(gl::TEXTURE_2D, texture);
+            
+            // Convert sprite pixels to RGBA u8 array
+            let mut rgba_data = Vec::with_capacity((sprite.width() * sprite.height() * 4) as usize);
+            for pixel in sprite.pixels() {
+                let rgba = pixel.as_u8_array();
+                rgba_data.extend_from_slice(&rgba);
             }
+            
+            gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::RGBA as i32,
+                sprite.width() as i32,
+                sprite.height() as i32,
+                0,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                rgba_data.as_ptr() as *const _,
+            );
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+
+            // Use sprite shader
+            gl::UseProgram(self.sprite_shader);
+
+            // Set projection matrix (orthographic for 320x240)
+            let projection_loc = gl::GetUniformLocation(self.sprite_shader, b"projection\0".as_ptr() as *const _);
+            #[rustfmt::skip]
+            let projection: [f32; 16] = [
+                2.0 / FB_WIDTH as f32, 0.0, 0.0, 0.0,
+                0.0, -2.0 / FB_HEIGHT as f32, 0.0, 0.0,
+                0.0, 0.0, -1.0, 0.0,
+                -1.0, 1.0, 0.0, 1.0,
+            ];
+            gl::UniformMatrix4fv(projection_loc, 1, gl::FALSE, projection.as_ptr());
+
+            // Calculate quad vertices for the sprite
+            let x0 = x as f32;
+            let y0 = y as f32;
+            let x1 = x0 + sprite.width() as f32;
+            let y1 = y0 + sprite.height() as f32;
+
+            #[rustfmt::skip]
+            let vertices: [f32; 24] = [
+                // positions  // texcoords
+                x0, y0,       0.0, 0.0,
+                x0, y1,       0.0, 1.0,
+                x1, y1,       1.0, 1.0,
+
+                x0, y0,       0.0, 0.0,
+                x1, y1,       1.0, 1.0,
+                x1, y0,       1.0, 0.0,
+            ];
+
+            // Upload vertices
+            gl::BindVertexArray(self.quad_vao);
+            gl::BindBuffer(gl::ARRAY_BUFFER, self.quad_vbo);
+            gl::BufferSubData(
+                gl::ARRAY_BUFFER,
+                0,
+                (vertices.len() * std::mem::size_of::<f32>()) as isize,
+                vertices.as_ptr() as *const _,
+            );
+
+            // Draw
+            gl::DrawArrays(gl::TRIANGLES, 0, 6);
+
+            // Cleanup
+            gl::DeleteTextures(1, &texture);
+            gl::BindVertexArray(0);
+            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         }
     }
 
@@ -250,37 +349,16 @@ impl GraphicsContext {
         }
     }
 
-    /// Get the dimensions of the virtual framebuffer
+    /// Get the dimensions of the framebuffer
     pub fn framebuffer_size(&self) -> (u32, u32) {
         (FB_WIDTH, FB_HEIGHT)
     }
 
     pub fn present(&mut self) -> anyhow::Result<()> {
-        // Upload the virtual framebuffer to the texture
+        // Render FBO texture to screen with letterboxing
         unsafe {
-            gl::BindTexture(gl::TEXTURE_2D, self.texture);
-            
-            // Convert Color buffer to RGBA8 using pre-allocated buffer
-            for (i, color) in self.virtual_framebuffer.iter().enumerate() {
-                let rgba = color.as_u8_array();
-                let base = i * 4;
-                self.rgba_buffer[base] = rgba[0];
-                self.rgba_buffer[base + 1] = rgba[1];
-                self.rgba_buffer[base + 2] = rgba[2];
-                self.rgba_buffer[base + 3] = rgba[3];
-            }
-            
-            gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                gl::RGBA as i32,
-                FB_WIDTH as i32,
-                FB_HEIGHT as i32,
-                0,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                self.rgba_buffer.as_ptr() as *const _,
-            );
+            // Bind default framebuffer
+            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
 
             // Calculate letterbox viewport
             let screen_width = self.gbm.size().x;
@@ -302,9 +380,39 @@ impl GraphicsContext {
 
             gl::Viewport(vp_x as i32, vp_y as i32, vp_width as i32, vp_height as i32);
 
-            // Render the texture
-            gl::UseProgram(self.shader_program);
-            gl::BindVertexArray(self.vao);
+            // Clear with black bars
+            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+
+            // Use screen shader
+            gl::UseProgram(self.screen_shader);
+            
+            // Bind FBO texture
+            gl::BindTexture(gl::TEXTURE_2D, self.fbo_texture);
+
+            // Draw fullscreen quad
+            gl::BindVertexArray(self.quad_vao);
+            gl::BindBuffer(gl::ARRAY_BUFFER, self.quad_vbo);
+            
+            #[rustfmt::skip]
+            let vertices: [f32; 24] = [
+                // positions   // texcoords
+                -1.0,  1.0,    0.0, 0.0,
+                -1.0, -1.0,    0.0, 1.0,
+                 1.0, -1.0,    1.0, 1.0,
+
+                -1.0,  1.0,    0.0, 0.0,
+                 1.0, -1.0,    1.0, 1.0,
+                 1.0,  1.0,    1.0, 0.0,
+            ];
+            
+            gl::BufferSubData(
+                gl::ARRAY_BUFFER,
+                0,
+                (vertices.len() * std::mem::size_of::<f32>()) as isize,
+                vertices.as_ptr() as *const _,
+            );
+
             gl::DrawArrays(gl::TRIANGLES, 0, 6);
             gl::BindVertexArray(0);
         }
@@ -339,8 +447,39 @@ impl GraphicsContext {
     }
 }
 
-// Vertex shader for rendering the virtual framebuffer
-const VERTEX_SHADER_SRC: &str = r#"#version 320 es
+// Vertex shader for rendering sprites
+const SPRITE_VERTEX_SHADER: &str = r#"#version 320 es
+precision mediump float;
+
+layout (location = 0) in vec2 aPos;
+layout (location = 1) in vec2 aTexCoord;
+
+uniform mat4 projection;
+
+out vec2 TexCoord;
+
+void main() {
+    gl_Position = projection * vec4(aPos, 0.0, 1.0);
+    TexCoord = aTexCoord;
+}
+"#;
+
+// Fragment shader for rendering sprites
+const SPRITE_FRAGMENT_SHADER: &str = r#"#version 320 es
+precision mediump float;
+
+in vec2 TexCoord;
+out vec4 FragColor;
+
+uniform sampler2D spriteTexture;
+
+void main() {
+    FragColor = texture(spriteTexture, TexCoord);
+}
+"#;
+
+// Vertex shader for rendering FBO to screen
+const SCREEN_VERTEX_SHADER: &str = r#"#version 320 es
 precision mediump float;
 
 layout (location = 0) in vec2 aPos;
@@ -354,8 +493,8 @@ void main() {
 }
 "#;
 
-// Fragment shader for rendering the virtual framebuffer
-const FRAGMENT_SHADER_SRC: &str = r#"#version 320 es
+// Fragment shader for rendering FBO to screen
+const SCREEN_FRAGMENT_SHADER: &str = r#"#version 320 es
 precision mediump float;
 
 in vec2 TexCoord;
