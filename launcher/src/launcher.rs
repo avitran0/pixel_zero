@@ -37,7 +37,7 @@ impl Launcher {
             }
             self.screen.update(&self.input);
             self.graphics.clear();
-            self.screen.render(&self.graphics);
+            self.screen.render(&mut self.graphics);
             self.graphics.present().unwrap();
         }
     }
