@@ -32,6 +32,7 @@ pub struct GraphicsContext {
 
     // 2D rendering state
     virtual_framebuffer: Vec<Color>,
+    rgba_buffer: Vec<u8>,  // Pre-allocated buffer for RGBA conversion
     texture: u32,
     shader_program: u32,
     vao: u32,
@@ -62,6 +63,7 @@ impl GraphicsContext {
 
         // Initialize 2D rendering resources
         let virtual_framebuffer = vec![Color::BLACK; (FB_WIDTH * FB_HEIGHT) as usize];
+        let rgba_buffer = vec![0u8; (FB_WIDTH * FB_HEIGHT * 4) as usize];
         let (texture, shader_program, vao, vbo) = unsafe { Self::init_2d_resources()? };
 
         Ok(Self {
@@ -71,6 +73,7 @@ impl GraphicsContext {
             framebuffer,
             buffer_object,
             virtual_framebuffer,
+            rgba_buffer,
             texture,
             shader_program,
             vao,
@@ -174,10 +177,6 @@ impl GraphicsContext {
     }
 
     pub fn clear(&self) {
-        // Clear the virtual framebuffer
-        for pixel in self.virtual_framebuffer.iter() {
-            // We can't modify through immutable reference, need mutable clear
-        }
         unsafe {
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT)
@@ -261,11 +260,14 @@ impl GraphicsContext {
         unsafe {
             gl::BindTexture(gl::TEXTURE_2D, self.texture);
             
-            // Convert Color buffer to RGBA8
-            let mut rgba_data = Vec::with_capacity((FB_WIDTH * FB_HEIGHT * 4) as usize);
-            for color in &self.virtual_framebuffer {
+            // Convert Color buffer to RGBA8 using pre-allocated buffer
+            for (i, color) in self.virtual_framebuffer.iter().enumerate() {
                 let rgba = color.as_u8_array();
-                rgba_data.extend_from_slice(&rgba);
+                let base = i * 4;
+                self.rgba_buffer[base] = rgba[0];
+                self.rgba_buffer[base + 1] = rgba[1];
+                self.rgba_buffer[base + 2] = rgba[2];
+                self.rgba_buffer[base + 3] = rgba[3];
             }
             
             gl::TexImage2D(
@@ -277,7 +279,7 @@ impl GraphicsContext {
                 0,
                 gl::RGBA,
                 gl::UNSIGNED_BYTE,
-                rgba_data.as_ptr() as *const _,
+                self.rgba_buffer.as_ptr() as *const _,
             );
 
             // Calculate letterbox viewport
