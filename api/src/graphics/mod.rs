@@ -243,6 +243,10 @@ impl GraphicsContext {
     }
 
     /// Draw a sprite at the given position using OpenGL
+    /// 
+    /// Note: This creates a new texture for each draw call. For optimal performance
+    /// with frequently drawn sprites, consider pre-creating textures and storing them.
+    /// This approach is simple and works well for GBA-style games with few sprites per frame.
     pub fn draw_sprite(&mut self, sprite: &Sprite, x: i32, y: i32) {
         unsafe {
             // Bind to FBO for rendering
@@ -250,6 +254,7 @@ impl GraphicsContext {
             gl::Viewport(0, 0, FB_WIDTH as i32, FB_HEIGHT as i32);
 
             // Create texture from sprite data
+            // Note: For better performance, textures could be cached
             let mut texture = 0;
             gl::GenTextures(1, &mut texture);
             gl::BindTexture(gl::TEXTURE_2D, texture);
@@ -277,6 +282,12 @@ impl GraphicsContext {
 
             // Use sprite shader
             gl::UseProgram(self.sprite_shader);
+            
+            // Bind texture to texture unit 0
+            gl::ActiveTexture(gl::TEXTURE0);
+            gl::BindTexture(gl::TEXTURE_2D, texture);
+            let tex_loc = gl::GetUniformLocation(self.sprite_shader, b"spriteTexture\0".as_ptr() as *const _);
+            gl::Uniform1i(tex_loc, 0);
 
             // Set projection matrix (orthographic for 320x240)
             let projection_loc = gl::GetUniformLocation(self.sprite_shader, b"projection\0".as_ptr() as *const _);
@@ -387,8 +398,11 @@ impl GraphicsContext {
             // Use screen shader
             gl::UseProgram(self.screen_shader);
             
-            // Bind FBO texture
+            // Bind FBO texture to texture unit 0
+            gl::ActiveTexture(gl::TEXTURE0);
             gl::BindTexture(gl::TEXTURE_2D, self.fbo_texture);
+            let tex_loc = gl::GetUniformLocation(self.screen_shader, b"screenTexture\0".as_ptr() as *const _);
+            gl::Uniform1i(tex_loc, 0);
 
             // Draw fullscreen quad
             gl::BindVertexArray(self.quad_vao);
