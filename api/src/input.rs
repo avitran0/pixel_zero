@@ -1,7 +1,6 @@
-use std::{fs::File, io::Read, os::unix::fs::FileTypeExt};
+use std::{collections::HashMap, fs::File, io::Read, os::unix::fs::FileTypeExt};
 
 const EV_KEY: u16 = 0x01;
-const EV_ABS: u16 = 0x03;
 
 const KEY_A: u16 = 30;
 const KEY_B: u16 = 48;
@@ -22,20 +21,63 @@ const BTN_DPAD_DOWN: u16 = 0x221;
 const BTN_DPAD_LEFT: u16 = 0x222;
 const BTN_DPAD_RIGHT: u16 = 0x223;
 
+const BTN_SOUTH: u16 = 0x130;
+const BTN_EAST: u16 = 0x131;
+const BTN_START: u16 = 0x134;
+const BTN_SELECT: u16 = 0x136;
+const BTN_TL: u16 = 0x137;
+const BTN_TR: u16 = 0x138;
+
+#[repr(C)]
+#[derive(Debug)]
+struct InputEvent {
+    time: libc::timeval,
+    kind: u16,
+    code: u16,
+    value: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Button {
+    Up,
+    Down,
+    Left,
+    Right,
+    A,
+    B,
+    L,
+    R,
+    Start,
+    Select,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ButtonState {
+    Pressed,
+    Released,
+}
+
 pub struct Input {
     device_files: Vec<File>,
+    current_state: HashMap<Button, ButtonState>,
+    previous_state: HashMap<Button, ButtonState>,
 }
 
 impl Default for Input {
     fn default() -> Self {
         let device_files = Self::scan_devices();
-        Self { device_files }
+        Self {
+            device_files,
+            current_state: HashMap::new(),
+            previous_state: HashMap::new(),
+        }
     }
 }
 
 impl Input {
     fn scan_devices() -> Vec<File> {
         let mut devices = Vec::new();
+
         for entry in std::fs::read_dir("/dev/input").unwrap() {
             let Ok(entry) = entry else {
                 continue;
@@ -44,6 +86,7 @@ impl Input {
             let Ok(file_type) = entry.file_type() else {
                 continue;
             };
+
             if !file_type.is_char_device() {
                 continue;
             }
@@ -65,69 +108,74 @@ impl Input {
         devices
     }
 
-    fn read(&self) {
-        for mut device in &self.device_files {
-            let mut buf = vec![0u8; size_of::<InputEvent>()];
-            while device.read_exact(&mut buf).is_ok() {
+    pub fn update(&mut self) {
+        self.previous_state = self.current_state.clone();
+
+        for device in &mut self.device_files {
+            let mut buf = [0u8; std::mem::size_of::<InputEvent>()];
+
+            while let Ok(()) = device.read_exact(&mut buf) {
                 let event = unsafe {
                     let ptr = buf.as_ptr() as *const InputEvent;
                     &*ptr
                 };
 
-                let kind = event.kind;
-                if kind != EV_KEY && kind != EV_ABS {
+                if event.kind != EV_KEY {
                     continue;
                 }
 
-                let button = match (kind, event.code) {
-                    (EV_KEY, KEY_UP) => Button::Up,
-                    (EV_KEY, KEY_DOWN) => Button::Down,
-                    (EV_KEY, KEY_LEFT) => Button::Left,
-                    (EV_KEY, KEY_RIGHT) => Button::Right,
+                let button = match event.code {
+                    KEY_UP => Button::Up,
+                    KEY_DOWN => Button::Down,
+                    KEY_LEFT => Button::Left,
+                    KEY_RIGHT => Button::Right,
 
-                    (EV_KEY, BTN_DPAD_UP) => Button::Up,
-                    (EV_KEY, BTN_DPAD_DOWN) => Button::Down,
-                    (EV_KEY, BTN_DPAD_LEFT) => Button::Left,
-                    (EV_KEY, BTN_DPAD_RIGHT) => Button::Right,
+                    KEY_A => Button::A,
+                    KEY_B => Button::B,
+                    KEY_L => Button::L,
+                    KEY_R => Button::R,
+                    KEY_DOT => Button::Start,
+                    KEY_COMMA => Button::Select,
 
-                    (EV_KEY, KEY_A) => Button::A,
-                    (EV_KEY, KEY_B) => Button::B,
-                    (EV_KEY, KEY_L) => Button::L,
-                    (EV_KEY, KEY_R) => Button::R,
-                    (EV_KEY, KEY_DOT) => Button::Start,
-                    (EV_KEY, KEY_COMMA) => Button::Select,
+                    BTN_DPAD_UP => Button::Up,
+                    BTN_DPAD_DOWN => Button::Down,
+                    BTN_DPAD_LEFT => Button::Left,
+                    BTN_DPAD_RIGHT => Button::Right,
 
-                    _ => continue,
+                    BTN_SOUTH => Button::A,
+                    BTN_EAST => Button::B,
+                    BTN_START => Button::Start,
+                    BTN_SELECT => Button::Select,
+                    BTN_TL => Button::L,
+                    BTN_TR => Button::R,
+
+                    _ => return,
                 };
+
+                let state = if event.value == 0 {
+                    ButtonState::Released
+                } else {
+                    ButtonState::Pressed
+                };
+
+                self.current_state.insert(button, state);
             }
         }
     }
-}
 
-#[repr(C)]
-#[derive(Debug)]
-struct InputEvent {
-    time: libc::timeval,
-    kind: u16,
-    code: u16,
-    value: i32,
-}
+    pub fn is_pressed(&self, button: Button) -> bool {
+        self.current_state.get(&button) == Some(&ButtonState::Pressed)
+    }
 
-#[derive(Debug, Clone, Copy)]
-pub enum Button {
-    Up,
-    Down,
-    Left,
-    Right,
-    A,
-    B,
-    L,
-    R,
-    Start,
-    Select,
-}
+    pub fn just_pressed(&self, button: Button) -> bool {
+        let current = self.current_state.get(&button) == Some(&ButtonState::Pressed);
+        let previous = self.previous_state.get(&button) != Some(&ButtonState::Pressed);
+        current && previous
+    }
 
-pub enum ButtonEvent {
-    Pressed,
-    Released,
+    pub fn just_released(&self, button: Button) -> bool {
+        let current = self.current_state.get(&button) == Some(&ButtonState::Released);
+        let previous = self.previous_state.get(&button) != Some(&ButtonState::Released);
+        current && previous
+    }
 }
