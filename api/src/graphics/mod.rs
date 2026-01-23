@@ -12,9 +12,16 @@ mod drm;
 mod egl;
 mod gbm;
 
+/// Width of the virtual framebuffer (GBA-style resolution)
 const FB_WIDTH: u32 = 320;
+/// Height of the virtual framebuffer (GBA-style resolution)
 const FB_HEIGHT: u32 = 240;
 
+/// Graphics context that provides low-level access to the display and
+/// a 2D sprite-based rendering API similar to the Game Boy Advance.
+///
+/// The virtual framebuffer is 320x240 pixels and is automatically letterboxed
+/// to fit the physical display while maintaining the correct aspect ratio.
 pub struct GraphicsContext {
     drm: Drm,
     gbm: Gbm,
