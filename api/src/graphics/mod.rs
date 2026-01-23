@@ -27,8 +27,8 @@ impl GraphicsContext {
         }
 
         let drm = Drm::load()?;
-        let gbm = Gbm::load(&drm)?;
-        let egl = Egl::load(&gbm, drm.size())?;
+        let mut gbm = Gbm::load(&drm)?;
+        let egl = Egl::load(&mut gbm)?;
 
         let buffer_object = unsafe { gbm.surface().lock_front_buffer() }?;
         let bpp = buffer_object.bpp();

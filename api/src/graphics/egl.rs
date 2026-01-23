@@ -13,7 +13,7 @@ pub struct Egl {
 }
 
 impl Egl {
-    pub fn load(gbm: &Gbm, size: UVec2) -> anyhow::Result<Self> {
+    pub fn load(gbm: &mut Gbm) -> anyhow::Result<Self> {
         let instance = Instance::new(Static);
         let display = unsafe { instance.get_display(gbm.device().as_raw() as *mut _) }
             .ok_or(anyhow::anyhow!("No EGL Display found"))?;
@@ -38,15 +38,13 @@ impl Egl {
         instance.choose_config(display, &config_attributes, &mut configs)?;
 
         let config = *configs
-            .iter()
-            .find(|&c| {
-                let buffer_size = instance
-                    .get_config_attrib(display, *c, egl::BUFFER_SIZE)
-                    .unwrap_or_default();
-                buffer_size == 24
-            })
-            .or_else(|| configs.first())
+            .first()
             .ok_or(anyhow::anyhow!("No suitable EGL config found",))?;
+
+        let visual_id = instance.get_config_attrib(display, config, egl::NATIVE_VISUAL_ID)?;
+        let gbm_format = unsafe { std::mem::transmute::<i32, gbm::Format>(visual_id) };
+
+        gbm.init_surface(gbm_format)?;
 
         let context_attributes = [
             egl::CONTEXT_MAJOR_VERSION,
@@ -64,7 +62,7 @@ impl Egl {
 
         gl::load_with(|s| instance.get_proc_address(s).unwrap() as *const _);
 
-        unsafe { gl::Viewport(0, 0, size.x as i32, size.y as i32) };
+        unsafe { gl::Viewport(0, 0, gbm.size().x as i32, gbm.size().y as i32) };
 
         instance.swap_buffers(display, surface)?;
 

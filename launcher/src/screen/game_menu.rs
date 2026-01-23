@@ -1,8 +1,4 @@
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    widgets::{Block, Widget as _},
-};
+use api::{graphics::GraphicsContext, input::Input};
 
 use crate::screen::Screen;
 
@@ -15,10 +11,7 @@ impl GameMenu {
 }
 
 impl Screen for GameMenu {
-    fn render(&self, area: Rect, buf: &mut Buffer) {
-        let block = Block::bordered().title("Games");
-        block.render(area, buf);
-    }
+    fn update(&mut self, input: &Input) {}
 
-    fn handle_events(&mut self) {}
+    fn render(&self, graphics: &GraphicsContext) {}
 }

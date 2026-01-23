@@ -7,4 +7,3 @@ edition = "2024"
 api = { workspace = true }
 anyhow = { workspace = true }
 glam = { workspace = true }
-ratatui = "0.30"

@@ -1,8 +1,8 @@
-use ratatui::{buffer::Buffer, layout::Rect};
+use api::{graphics::GraphicsContext, input::Input};
 
 pub mod game_menu;
 
 pub trait Screen {
-    fn render(&self, area: Rect, buf: &mut Buffer);
-    fn handle_events(&mut self);
+    fn update(&mut self, input: &Input);
+    fn render(&self, graphics: &GraphicsContext);
 }

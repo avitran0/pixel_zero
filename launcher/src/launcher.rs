@@ -1,8 +1,10 @@
-use ratatui::{DefaultTerminal, Frame};
+use api::{graphics::GraphicsContext, input::Input};
 
 use crate::screen::{Screen, game_menu::GameMenu};
 
 pub struct Launcher {
+    graphics: GraphicsContext,
+    input: Input,
     screen: Box<dyn Screen>,
     exit: bool,
 }
@@ -10,25 +12,19 @@ pub struct Launcher {
 impl Launcher {
     pub fn new() -> Self {
         Self {
-            exit: false,
+            graphics: GraphicsContext::load().unwrap(),
+            input: Input::default(),
             screen: Box::new(GameMenu::new()),
+            exit: false,
         }
     }
 
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> std::io::Result<()> {
+    pub fn run(&mut self) {
         while !self.exit {
-            terminal.draw(|frame| self.draw(frame))?;
-            self.handle_events()?;
+            self.screen.update(&self.input);
+            self.graphics.clear();
+            self.screen.render(&self.graphics);
+            self.graphics.present().unwrap();
         }
-
-        Ok(())
-    }
-
-    fn draw(&self, frame: &mut Frame) {
-        todo!()
-    }
-
-    fn handle_events(&mut self) -> std::io::Result<()> {
-        todo!()
     }
 }

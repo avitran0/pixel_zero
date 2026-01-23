@@ -26,12 +26,14 @@ pub struct Input {
     device_files: Vec<File>,
 }
 
-impl Input {
-    pub fn new() -> anyhow::Result<Self> {
+impl Default for Input {
+    fn default() -> Self {
         let device_files = Self::scan_devices();
-        Ok(Self { device_files })
+        Self { device_files }
     }
+}
 
+impl Input {
     fn scan_devices() -> Vec<File> {
         let mut devices = Vec::new();
         for entry in std::fs::read_dir("/dev/input").unwrap() {
