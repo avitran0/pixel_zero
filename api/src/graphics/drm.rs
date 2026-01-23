@@ -9,15 +9,23 @@ use std::{
 
 use drm::{
     Device as DrmDevice,
-    control::{Device as ControlDevice, Mode, ModeTypeFlags, connector, crtc},
+    control::{Device as ControlDevice, Mode, ModeTypeFlags, connector, crtc, framebuffer},
 };
 use glam::UVec2;
+
+struct OriginalState {
+    crtc: crtc::Info,
+    framebuffer: Option<framebuffer::Handle>,
+    connectors: Vec<connector::Handle>,
+    mode: Option<Mode>,
+}
 
 pub struct Drm {
     gpu: Arc<Gpu>,
     connector: connector::Info,
     mode: Mode,
     crtc: crtc::Info,
+    original_state: Option<OriginalState>,
 }
 
 impl Drm {
@@ -33,6 +41,36 @@ impl Drm {
             .find(|connector| connector.state() == connector::State::Connected)
         else {
             return Err(anyhow::anyhow!("No connected connectors found"));
+        };
+
+        let original_crtc = connector
+            .current_encoder()
+            .and_then(|e| gpu.get_encoder(e).ok())
+            .and_then(|e| e.crtc());
+
+        let original_state = if let Some(crtc) = original_crtc {
+            let crtc_info = gpu.get_crtc(crtc)?;
+            let connectors: Vec<_> = resources
+                .connectors()
+                .iter()
+                .filter_map(|&conn_handle| gpu.get_connector(conn_handle, false).ok())
+                .filter(|conn| {
+                    conn.current_encoder()
+                        .and_then(|enc_handle| gpu.get_encoder(enc_handle).ok())
+                        .and_then(|enc| enc.crtc())
+                        .map_or(false, |enc_crtc| enc_crtc == crtc)
+                })
+                .map(|conn| conn.handle())
+                .collect();
+
+            Some(OriginalState {
+                crtc: crtc_info,
+                framebuffer: crtc_info.framebuffer(),
+                connectors,
+                mode: crtc_info.mode(),
+            })
+        } else {
+            None
         };
 
         let mode = *connector
@@ -57,6 +95,7 @@ impl Drm {
             connector,
             mode,
             crtc,
+            original_state,
         })
     }
 
@@ -85,6 +124,20 @@ impl Drm {
 
     pub fn crtc(&self) -> &crtc::Info {
         &self.crtc
+    }
+}
+
+impl Drop for Drm {
+    fn drop(&mut self) {
+        if let Some(state) = &self.original_state {
+            let _ = self.gpu.set_crtc(
+                state.crtc.handle(),
+                state.framebuffer,
+                (0, 0),
+                &state.connectors,
+                state.mode,
+            );
+        }
     }
 }
 
