@@ -133,7 +133,7 @@ impl Drop for Drm {
             let _ = self.gpu.set_crtc(
                 state.crtc.handle(),
                 state.framebuffer,
-                (0, 0),
+                state.crtc.position(),
                 &state.connectors,
                 state.mode,
             );
