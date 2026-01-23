@@ -161,15 +161,6 @@ RGBA color representation.
 - `Color::GREEN` - Green (0, 255, 0)
 - `Color::BLUE` - Blue (0, 0, 255)
 
-## Technical Details
-
-- The rendering target is a 320x240 OpenGL framebuffer object (FBO)
-- Sprites are uploaded as OpenGL textures and rendered as textured quads
-- Text is rendered by drawing individual glyph sprites
-- The FBO is then rendered to the screen with letterboxing and nearest-neighbor filtering
-- Alpha blending is handled natively by OpenGL
-- All rendering uses OpenGL ES 3.2 shaders
-
 ## Performance Considerations
 
 - Sprites are uploaded to GPU memory each time they're drawn
