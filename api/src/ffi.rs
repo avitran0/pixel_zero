@@ -157,6 +157,12 @@ pub extern "C" fn sprite_from_pixels(
         return ptr::null_mut();
     }
     
+    // Validate that pixels_len matches expected size
+    let expected_len = (width * height * 4) as usize;
+    if pixels_len != expected_len {
+        return ptr::null_mut();
+    }
+    
     unsafe {
         let pixel_slice = slice::from_raw_parts(pixels, pixels_len);
         let mut colors = Vec::with_capacity((width * height) as usize);
@@ -260,6 +266,8 @@ pub type BitmapFontHandle = *mut BitmapFont;
 
 /// Create a bitmap font from a sprite atlas
 /// Returns a handle to the font, or null on failure
+/// 
+/// Note: The sprite is cloned internally as BitmapFont takes ownership of the atlas
 #[no_mangle]
 pub extern "C" fn bitmap_font_new(
     atlas: *const Sprite,
@@ -271,6 +279,7 @@ pub extern "C" fn bitmap_font_new(
     }
     
     unsafe {
+        // Clone is necessary because BitmapFont::new takes ownership
         let sprite_clone = (*atlas).clone();
         Box::into_raw(Box::new(BitmapFont::new(sprite_clone, glyph_width, glyph_height)))
     }
