@@ -3,6 +3,7 @@ use std::{
     fs::File,
     io::Read,
     os::unix::fs::{FileTypeExt, OpenOptionsExt},
+    time::{Duration, Instant},
 };
 
 const EV_KEY: u16 = 0x01;
@@ -62,8 +63,10 @@ enum ButtonState {
     Released,
 }
 
+const SCAN_INTERVAL: Duration = Duration::from_secs(5);
 pub struct Input {
     device_files: Vec<File>,
+    last_scanned: Instant,
     current_state: HashMap<Button, ButtonState>,
     previous_state: HashMap<Button, ButtonState>,
 }
@@ -73,6 +76,7 @@ impl Default for Input {
         let device_files = Self::scan_devices();
         Self {
             device_files,
+            last_scanned: Instant::now(),
             current_state: HashMap::new(),
             previous_state: HashMap::new(),
         }
@@ -118,6 +122,11 @@ impl Input {
     }
 
     pub fn update(&mut self) {
+        if self.last_scanned.elapsed() > SCAN_INTERVAL {
+            self.device_files = Self::scan_devices();
+            self.last_scanned = Instant::now();
+        }
+
         self.previous_state = self.current_state.clone();
 
         for device in &mut self.device_files {
