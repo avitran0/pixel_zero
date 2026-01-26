@@ -5,6 +5,9 @@ use nix::sys::termios::{FlushArg, LocalFlags, SetArg, Termios, tcflush, tcgetatt
 pub mod graphics;
 pub mod input;
 
+pub const WIDTH: u32 = 320;
+pub const HEIGHT: u32 = 240;
+
 /// This struct prevents keystrokes ending up in stdout while the program is running.
 /// Only one should be created in `main`, and dropped on program exit.
 pub struct TerminalGuard {
@@ -17,7 +20,7 @@ impl TerminalGuard {
         if CREATED.swap(true, Ordering::Relaxed) {
             return Err(anyhow::anyhow!("terminal guard already in use"));
         }
-        
+
         let original = tcgetattr(std::io::stdin())?;
         let mut temporary = original.clone();
         temporary.local_flags &= !(LocalFlags::ICANON | LocalFlags::ECHO);

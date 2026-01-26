@@ -20,7 +20,7 @@ struct OriginalState {
     mode: Option<Mode>,
 }
 
-pub struct Drm {
+pub(crate) struct Drm {
     gpu: Arc<Gpu>,
     connector: connector::Info,
     mode: Mode,
@@ -29,7 +29,7 @@ pub struct Drm {
 }
 
 impl Drm {
-    pub fn load() -> anyhow::Result<Self> {
+    pub(crate) fn load() -> anyhow::Result<Self> {
         let gpu = Gpu::open()?;
 
         let resources = gpu.resource_handles()?;
@@ -99,30 +99,30 @@ impl Drm {
         })
     }
 
-    pub fn size(&self) -> UVec2 {
+    pub(crate) fn size(&self) -> UVec2 {
         UVec2 {
             x: self.mode.size().0 as u32,
             y: self.mode.size().1 as u32,
         }
     }
 
-    pub fn gpu(&self) -> &Gpu {
+    pub(crate) fn gpu(&self) -> &Gpu {
         &self.gpu
     }
 
-    pub fn gpu_arc(&self) -> Arc<Gpu> {
+    pub(crate) fn gpu_arc(&self) -> Arc<Gpu> {
         self.gpu.clone()
     }
 
-    pub fn connector(&self) -> &connector::Info {
+    pub(crate) fn connector(&self) -> &connector::Info {
         &self.connector
     }
 
-    pub fn mode(&self) -> &Mode {
+    pub(crate) fn mode(&self) -> &Mode {
         &self.mode
     }
 
-    pub fn crtc(&self) -> &crtc::Info {
+    pub(crate) fn crtc(&self) -> &crtc::Info {
         &self.crtc
     }
 }
@@ -141,12 +141,12 @@ impl Drop for Drm {
     }
 }
 
-pub struct Gpu {
+pub(crate) struct Gpu {
     file: File,
 }
 
 impl Gpu {
-    pub fn open() -> std::io::Result<Self> {
+    pub(crate) fn open() -> std::io::Result<Self> {
         let dir = std::fs::read_dir("/dev/dri")?;
         for file in dir {
             let file = file?;

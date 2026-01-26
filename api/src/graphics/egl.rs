@@ -3,7 +3,7 @@ use khronos_egl::{self as egl, Config, Context, Display, Instance, Static, Surfa
 
 use crate::graphics::gbm::Gbm;
 
-pub struct Egl {
+pub(crate) struct Egl {
     instance: Instance<Static>,
     display: Display,
     _config: Config,
@@ -12,7 +12,7 @@ pub struct Egl {
 }
 
 impl Egl {
-    pub fn load(gbm: &mut Gbm) -> anyhow::Result<Self> {
+    pub(crate) fn load(gbm: &mut Gbm) -> anyhow::Result<Self> {
         let instance = Instance::new(Static);
         let display = unsafe { instance.get_display(gbm.device().as_raw() as *mut _) }
             .ok_or(anyhow::anyhow!("No EGL Display found"))?;
@@ -75,15 +75,15 @@ impl Egl {
         })
     }
 
-    pub fn instance(&self) -> &Instance<Static> {
+    pub(crate) fn instance(&self) -> &Instance<Static> {
         &self.instance
     }
 
-    pub fn display(&self) -> Display {
+    pub(crate) fn display(&self) -> Display {
         self.display
     }
 
-    pub fn surface(&self) -> Surface {
+    pub(crate) fn surface(&self) -> Surface {
         self.surface
     }
 }

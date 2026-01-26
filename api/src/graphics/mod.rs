@@ -3,7 +3,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer as drmfb};
 use ::gbm::BufferObject;
 
-use crate::graphics::{color::{Color, ColorF32}, drm::Drm, egl::Egl, gbm::Gbm};
+use crate::graphics::{
+    color::{Color, ColorF32}, drm::Drm, egl::Egl, framebuffer::Framebuffer, gbm::Gbm
+};
 
 pub mod color;
 mod drm;
@@ -11,6 +13,7 @@ mod egl;
 mod framebuffer;
 mod gbm;
 mod shader;
+mod sprite;
 mod texture;
 
 pub struct Graphics {
@@ -18,15 +21,17 @@ pub struct Graphics {
     gbm: Gbm,
     egl: Egl,
 
-    framebuffer: drmfb::Handle,
+    drm_fb: drmfb::Handle,
     buffer_object: BufferObject<()>,
+
+    framebuffer: Framebuffer,
 }
 
 static LOADED: AtomicBool = AtomicBool::new(false);
 impl Graphics {
     pub fn load() -> anyhow::Result<Self> {
         if LOADED.swap(true, Ordering::Relaxed) {
-            return Err(anyhow::anyhow!("GraphicsContext already loaded"));
+            return Err(anyhow::anyhow!("graphics already loaded"));
         }
 
         let drm = Drm::load()?;
@@ -35,21 +40,24 @@ impl Graphics {
 
         let buffer_object = unsafe { gbm.surface().lock_front_buffer() }?;
         let bpp = buffer_object.bpp();
-        let framebuffer = drm.gpu().add_framebuffer(&buffer_object, bpp, bpp)?;
+        let drm_fb = drm.gpu().add_framebuffer(&buffer_object, bpp, bpp)?;
         drm.gpu().set_crtc(
             drm.crtc().handle(),
-            Some(framebuffer),
+            Some(drm_fb),
             (0, 0),
             &[drm.connector().handle()],
             Some(*drm.mode()),
         )?;
 
+        let framebuffer = Framebuffer::load()?;
+
         Ok(Self {
             drm,
             gbm,
             egl,
-            framebuffer,
+            drm_fb,
             buffer_object,
+            framebuffer,
         })
     }
 
@@ -68,11 +76,11 @@ impl Graphics {
 
         let buffer_object = unsafe { self.gbm.surface().lock_front_buffer() }?;
         let bpp = buffer_object.bpp();
-        let framebuffer = self.drm.gpu().add_framebuffer(&buffer_object, bpp, bpp)?;
+        let drm_fb = self.drm.gpu().add_framebuffer(&buffer_object, bpp, bpp)?;
 
         self.drm.gpu().page_flip(
             self.drm.crtc().handle(),
-            framebuffer,
+            drm_fb,
             PageFlipFlags::EVENT,
             None,
         )?;
@@ -83,10 +91,10 @@ impl Graphics {
             }
         }
 
-        self.drm.gpu().destroy_framebuffer(self.framebuffer)?;
+        self.drm.gpu().destroy_framebuffer(self.drm_fb)?;
 
         self.buffer_object = buffer_object;
-        self.framebuffer = framebuffer;
+        self.drm_fb = drm_fb;
 
         Ok(())
     }
