@@ -1,3 +1,5 @@
+use api::TerminalGuard;
+
 use crate::launcher::Launcher;
 use std::io::Write as _;
 
@@ -11,5 +13,6 @@ fn main() {
         .target(env_logger::Target::Stdout)
         .init();
 
+    let _guard = TerminalGuard::new().unwrap();
     Launcher::new().run();
 }
