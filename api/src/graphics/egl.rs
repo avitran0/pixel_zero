@@ -17,7 +17,8 @@ impl Egl {
         let instance = Instance::new(Static);
         let display = unsafe { instance.get_display(gbm.device().as_raw() as *mut _) }
             .ok_or(anyhow::anyhow!("No EGL Display found"))?;
-        let egl_version = instance.initialize(display)?;
+        let (major, minor) = instance.initialize(display)?;
+        println!("OpenGL ES {major}.{minor}");
         instance.bind_api(egl::OPENGL_ES_API)?;
 
         let config_attributes = [
@@ -45,10 +46,6 @@ impl Egl {
         let gbm_format = unsafe { std::mem::transmute::<i32, gbm::Format>(visual_id) };
 
         gbm.init_surface(gbm_format)?;
-
-        let major = instance.get_config_attrib(display, config, egl::CONTEXT_MAJOR_VERSION)?;
-        let minor = instance.get_config_attrib(display, config, egl::CONTEXT_MINOR_VERSION)?;
-        println!("OpenGL ES {major}.{minor}");
 
         let context_attributes = [
             egl::CONTEXT_MAJOR_VERSION,
