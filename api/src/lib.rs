@@ -1,4 +1,4 @@
-use nix::sys::termios::{LocalFlags, SetArg, Termios, tcgetattr, tcsetattr};
+use nix::sys::termios::{FlushArg, LocalFlags, SetArg, Termios, tcflush, tcgetattr, tcsetattr};
 
 pub mod graphics;
 pub mod input;
@@ -19,6 +19,9 @@ impl TerminalGuard {
 
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
+        if tcflush(std::io::stdin(), FlushArg::TCIFLUSH).is_err() {
+            log::error!("failed to flush stdin");
+        }
         if tcsetattr(std::io::stdin(), SetArg::TCSANOW, &self.original).is_err() {
             log::error!("failed to reset termios");
         }
