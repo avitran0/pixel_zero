@@ -49,17 +49,13 @@ impl Egl {
 
         let context_attributes = [
             egl::CONTEXT_MAJOR_VERSION,
-            3,
-            egl::CONTEXT_MINOR_VERSION,
             2,
+            egl::CONTEXT_MINOR_VERSION,
+            0,
             egl::NONE,
         ];
 
-        let context = instance.create_context(display, config, None, &context_attributes);
-        if let Err(err) = context {
-            dbg!(err);
-        }
-        let context = context.unwrap();
+        let context = instance.create_context(display, config, None, &context_attributes)?;
         let surface = unsafe {
             instance.create_window_surface(display, config, gbm.surface().as_raw() as *mut _, None)
         }?;
