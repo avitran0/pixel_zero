@@ -6,3 +6,5 @@ resolver = "3"
 api = { path = "api" }
 anyhow = "1.0"
 glam = "0.30"
+log = "0.4"
+env_logger = "0.11"

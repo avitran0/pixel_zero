@@ -15,6 +15,7 @@ impl Gbm {
     pub fn load(drm: &Drm) -> anyhow::Result<Self> {
         let size = drm.size();
         let device = Device::new(drm.gpu_arc())?;
+        log::info!("gbm backend: {}", device.backend_name());
         let surface = device.create_surface(
             size.x,
             size.y,

@@ -18,7 +18,7 @@ impl Egl {
         let display = unsafe { instance.get_display(gbm.device().as_raw() as *mut _) }
             .ok_or(anyhow::anyhow!("No EGL Display found"))?;
         let (major, minor) = instance.initialize(display)?;
-        println!("EGL version {major}.{minor}");
+        log::info!("egl version {major}.{minor}");
         instance.bind_api(egl::OPENGL_ES_API)?;
 
         let config_attributes = [

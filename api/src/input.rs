@@ -74,6 +74,7 @@ pub struct Input {
 impl Default for Input {
     fn default() -> Self {
         let device_files = Self::scan_devices();
+        log::info!("found {} input devices", device_files.len());
         Self {
             device_files,
             last_scanned: Instant::now(),

@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = { workspace = true }
 glam = { workspace = true }
+log = { workspace = true }
 libc = "0.2"
 drm = "0.14"
 gbm = { version = "0.18", default-features = false, features = [
