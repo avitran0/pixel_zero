@@ -29,7 +29,7 @@ impl Egl {
             egl::BLUE_SIZE,
             8,
             egl::RENDERABLE_TYPE,
-            egl::OPENGL_ES3_BIT,
+            egl::OPENGL_ES_BIT,
             egl::SURFACE_TYPE,
             egl::WINDOW_BIT,
             egl::NONE,
@@ -55,7 +55,11 @@ impl Egl {
             egl::NONE,
         ];
 
-        let context = instance.create_context(display, config, None, &context_attributes)?;
+        let context = instance.create_context(display, config, None, &context_attributes);
+        if let Err(err) = context {
+            dbg!(err);
+        }
+        let context = context.unwrap();
         let surface = unsafe {
             instance.create_window_surface(display, config, gbm.surface().as_raw() as *mut _, None)
         }?;
