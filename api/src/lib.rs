@@ -1,14 +1,23 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use nix::sys::termios::{FlushArg, LocalFlags, SetArg, Termios, tcflush, tcgetattr, tcsetattr};
 
 pub mod graphics;
 pub mod input;
 
+/// This struct prevents keystrokes ending up in stdout while the program is running.
+/// Only one should be created in `main`, and dropped on program exit.
 pub struct TerminalGuard {
     original: Termios,
 }
 
+static CREATED: AtomicBool = AtomicBool::new(false);
 impl TerminalGuard {
     pub fn new() -> anyhow::Result<Self> {
+        if CREATED.swap(true, Ordering::Relaxed) {
+            return Err(anyhow::anyhow!("terminal guard already in use"));
+        }
+        
         let original = tcgetattr(std::io::stdin())?;
         let mut temporary = original.clone();
         temporary.local_flags &= !(LocalFlags::ICANON | LocalFlags::ECHO);
