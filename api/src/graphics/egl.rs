@@ -46,6 +46,10 @@ impl Egl {
 
         gbm.init_surface(gbm_format)?;
 
+        let major = instance.get_config_attrib(display, config, egl::CONTEXT_MAJOR_VERSION)?;
+        let minor = instance.get_config_attrib(display, config, egl::CONTEXT_MINOR_VERSION)?;
+        println!("OpenGL ES {major}.{minor}");
+
         let context_attributes = [
             egl::CONTEXT_MAJOR_VERSION,
             3,
