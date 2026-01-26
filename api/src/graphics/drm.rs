@@ -58,7 +58,7 @@ impl Drm {
                     conn.current_encoder()
                         .and_then(|enc_handle| gpu.get_encoder(enc_handle).ok())
                         .and_then(|enc| enc.crtc())
-                        .map_or(false, |enc_crtc| enc_crtc == crtc)
+                        == Some(crtc)
                 })
                 .map(|conn| conn.handle())
                 .collect();

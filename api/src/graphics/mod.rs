@@ -78,7 +78,7 @@ impl Graphics {
         )?;
         let events = self.drm.gpu().receive_events()?;
         for event in events {
-            if let control::Event::PageFlip(event) = event {
+            if let control::Event::PageFlip(_event) = event {
                 // todo
             }
         }
