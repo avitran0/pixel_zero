@@ -51,7 +51,7 @@ impl From<ColorF32> for Color {
 }
 
 impl From<&ColorF32> for Color {
-    fn from(value: ColorF32) -> Self {
+    fn from(value: &ColorF32) -> Self {
         Self {
             r: (value.r * 255.0) as u8,
             g: (value.g * 255.0) as u8,
