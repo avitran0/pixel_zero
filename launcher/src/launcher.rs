@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use api::{
-    graphics::Graphics,
+    graphics::{Graphics, color::Color},
     input::{Button, Input},
 };
 
@@ -36,7 +36,7 @@ impl Launcher {
                 self.exit = true;
             }
             self.screen.update(&self.input);
-            self.graphics.clear();
+            self.graphics.clear(Color::rgb(100, 150, 240));
             self.screen.render(&self.graphics);
             self.graphics.present().unwrap();
         }

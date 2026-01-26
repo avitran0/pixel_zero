@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer as drmfb};
 use ::gbm::BufferObject;
 
-use crate::graphics::{drm::Drm, egl::Egl, gbm::Gbm};
+use crate::graphics::{color::ColorF32, drm::Drm, egl::Egl, gbm::Gbm};
 
 pub mod color;
 mod drm;
@@ -53,9 +53,10 @@ impl Graphics {
         })
     }
 
-    pub fn clear(&self) {
+    pub fn clear(&self, color: Color) {
+        let color = ColorF32::from(color);
         unsafe {
-            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+            gl::ClearColor(color.r(), color.g(), color.b(), color.a());
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT)
         };
     }
