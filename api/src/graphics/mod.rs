@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer as drmfb};
 use ::gbm::BufferObject;
 
-use crate::graphics::{color::ColorF32, drm::Drm, egl::Egl, gbm::Gbm};
+use crate::graphics::{color::{Color, ColorF32}, drm::Drm, egl::Egl, gbm::Gbm};
 
 pub mod color;
 mod drm;
