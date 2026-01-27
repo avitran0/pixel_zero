@@ -13,13 +13,6 @@ impl Texture {
         let image = ImageReader::open(path)?.decode()?;
         let rgba_image = image.to_rgba8();
         let size = uvec2(image.width(), image.height());
-        if !size.x.is_power_of_two() || !size.y.is_power_of_two() {
-            return Err(anyhow::anyhow!(
-                "texture size is not power of two: {}x{}",
-                size.x,
-                size.y
-            ));
-        }
 
         let mut texture = 0;
         unsafe {
@@ -28,6 +21,8 @@ impl Texture {
 
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
 
             gl::TexImage2D(
                 gl::TEXTURE_2D,
@@ -48,14 +43,6 @@ impl Texture {
     }
 
     pub fn empty(size: UVec2) -> anyhow::Result<Self> {
-        if !size.x.is_power_of_two() || !size.y.is_power_of_two() {
-            return Err(anyhow::anyhow!(
-                "texture size is not power of two: {}x{}",
-                size.x,
-                size.y
-            ));
-        }
-
         let mut texture = 0;
         unsafe {
             gl::GenTextures(1, &mut texture);
@@ -63,6 +50,8 @@ impl Texture {
 
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
 
             gl::TexImage2D(
                 gl::TEXTURE_2D,

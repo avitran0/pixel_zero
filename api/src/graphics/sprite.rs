@@ -1,7 +1,5 @@
 use std::path::Path;
 
-use glam::Vec2;
-
 use crate::graphics::texture::Texture;
 
 pub struct Sprite {
@@ -13,6 +11,4 @@ impl Sprite {
         let texture = Texture::load(path)?;
         Ok(Self { texture })
     }
-
-    pub fn draw(position: Vec2) {}
 }

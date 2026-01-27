@@ -4,12 +4,17 @@ use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer as drmfb};
 use ::gbm::BufferObject;
 
 use crate::graphics::{
-    color::{Color, ColorF32}, drm::Drm, egl::Egl, framebuffer::Framebuffer, gbm::Gbm
+    color::{Color, ColorF32},
+    drm::Drm,
+    egl::Egl,
+    framebuffer::Framebuffer,
+    gbm::Gbm,
 };
 
 pub mod color;
 mod drm;
 mod egl;
+mod frame;
 mod framebuffer;
 mod gbm;
 mod shader;
@@ -78,12 +83,9 @@ impl Graphics {
         let bpp = buffer_object.bpp();
         let drm_fb = self.drm.gpu().add_framebuffer(&buffer_object, bpp, bpp)?;
 
-        self.drm.gpu().page_flip(
-            self.drm.crtc().handle(),
-            drm_fb,
-            PageFlipFlags::EVENT,
-            None,
-        )?;
+        self.drm
+            .gpu()
+            .page_flip(self.drm.crtc().handle(), drm_fb, PageFlipFlags::EVENT, None)?;
         let events = self.drm.gpu().receive_events()?;
         for event in events {
             if let control::Event::PageFlip(_event) = event {
