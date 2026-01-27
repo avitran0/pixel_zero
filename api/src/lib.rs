@@ -7,6 +7,7 @@ pub mod input;
 
 pub const WIDTH: u32 = 320;
 pub const HEIGHT: u32 = 240;
+pub const SOCKET_PATH: &str = "/tmp/pixel_zero.sock";
 
 /// This struct prevents keystrokes ending up in stdout while the program is running.
 /// Only one should be created in `main`, and dropped on program exit.
