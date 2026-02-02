@@ -7,3 +7,4 @@ pixel_zero = { path = "pixel_zero" }
 anyhow = "1.0"
 glam = "0.30"
 log = { version = "0.4", features = ["std"] }
+thiserror = "2.0"

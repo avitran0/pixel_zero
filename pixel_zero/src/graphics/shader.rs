@@ -1,5 +1,11 @@
-pub enum ShaderError {
+use thiserror::Error;
 
+#[derive(Debug, Error)]
+pub enum ShaderError {
+    #[error("Shader compilation error: {0}")]
+    Compile(String),
+    #[error("Shader linking error: {0}")]
+    Linking(String),
 }
 
 pub(crate) struct Shader {
