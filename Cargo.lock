@@ -74,22 +74,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
-name = "api"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "drm",
- "gbm",
- "gl",
- "glam",
- "image",
- "khronos-egl",
- "libc",
- "log",
- "nix",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -358,10 +342,10 @@ name = "launcher"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "api",
  "env_logger",
  "glam",
  "log",
+ "pixel_zero",
 ]
 
 [[package]]
@@ -440,6 +424,22 @@ name = "once_cell_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
+
+[[package]]
+name = "pixel_zero"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "drm",
+ "gbm",
+ "gl",
+ "glam",
+ "image",
+ "khronos-egl",
+ "libc",
+ "log",
+ "nix",
+]
 
 [[package]]
 name = "pkg-config"

@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use api::{
+use pixel_zero::{
     graphics::{Graphics, color::Color},
     input::{Button, Input},
 };

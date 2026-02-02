@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-api = { workspace = true }
+pixel_zero = { workspace = true }
 anyhow = { workspace = true }
 glam = { workspace = true }
 log = { workspace = true }

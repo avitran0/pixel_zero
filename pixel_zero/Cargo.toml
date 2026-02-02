@@ -1,7 +1,15 @@
 [package]
-name = "api"
+name = "pixel_zero"
 version = "0.1.0"
 edition = "2024"
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[profile.release]
+debug = true
+codegen-units = 1
+lto = "fat"
 
 [dependencies]
 anyhow = { workspace = true }

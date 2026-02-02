@@ -1,4 +1,4 @@
-use api::{graphics::Graphics, input::Input};
+use pixel_zero::{graphics::Graphics, input::Input};
 
 use crate::screen::Screen;
 

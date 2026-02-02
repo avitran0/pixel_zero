@@ -1,4 +1,4 @@
-use api::TerminalGuard;
+use pixel_zero::TerminalGuard;
 
 use crate::launcher::Launcher;
 use std::io::Write as _;
