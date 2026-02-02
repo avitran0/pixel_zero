@@ -3,7 +3,7 @@ pub(crate) struct Shader {
 }
 
 impl Shader {
-    pub fn load() -> anyhow::Result<Self> {
+    pub fn load(vertex: &str, fragment: &str) -> anyhow::Result<Self> {
         Err(anyhow::anyhow!(""))
     }
 }

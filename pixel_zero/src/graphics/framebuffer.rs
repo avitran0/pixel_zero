@@ -7,7 +7,7 @@ use crate::{
 
 pub(crate) struct Framebuffer {
     framebuffer: u32,
-    fbo_texture: Texture,
+    texture: Texture,
     sprite_shader: Shader,
     screen_shader: Shader,
 }
@@ -23,9 +23,24 @@ impl Framebuffer {
         let texture = Texture::empty(uvec2(WIDTH, HEIGHT))?;
 
         unsafe {
-            gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D, texture.handle(), 0);
+            gl::FramebufferTexture2D(
+                gl::FRAMEBUFFER,
+                gl::COLOR_ATTACHMENT0,
+                gl::TEXTURE_2D,
+                texture.handle(),
+                0,
+            );
+            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         }
 
-        Err(anyhow::anyhow!(""))
+        let sprite_shader = Shader::load("", "")?;
+        let screen_shader = Shader::load("", "")?;
+
+        Ok(Self {
+            framebuffer,
+            texture,
+            sprite_shader,
+            screen_shader,
+        })
     }
 }
