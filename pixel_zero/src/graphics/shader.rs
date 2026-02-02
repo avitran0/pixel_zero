@@ -1,3 +1,7 @@
+pub enum ShaderError {
+
+}
+
 pub(crate) struct Shader {
     program: u32,
 }

@@ -25,3 +25,4 @@ khronos-egl = { version = "6.0", features = ["static"] }
 gl = "0.14"
 nix = { version = "0.31", features = ["term"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
+parking_lot = "0.12"

@@ -8,4 +8,3 @@ pixel_zero = { workspace = true }
 anyhow = { workspace = true }
 glam = { workspace = true }
 log = { workspace = true }
-env_logger = { workspace = true }
