@@ -4,7 +4,6 @@ resolver = "3"
 
 [workspace.lints.clippy]
 pedantic = "warn"
-perf = "deny"
 
 [workspace.dependencies]
 pixel_zero = { path = "pixel_zero" }

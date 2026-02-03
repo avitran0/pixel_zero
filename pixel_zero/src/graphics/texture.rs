@@ -2,6 +2,15 @@ use std::path::Path;
 
 use glam::{UVec2, uvec2};
 use image::ImageReader;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum TextureError {
+    #[error("I/O Error: {0}")]
+    IO(#[from] std::io::Error),
+    #[error("Image Decoding: {0}")]
+    Image(#[from] image::ImageError),
+}
 
 pub struct Texture {
     texture: u32,
@@ -9,7 +18,7 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn load(path: impl AsRef<Path>) -> anyhow::Result<Self> {
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, TextureError> {
         let image = ImageReader::open(path)?.decode()?;
         let rgba_image = image.to_rgba8();
         let size = uvec2(image.width(), image.height());
@@ -58,7 +67,7 @@ impl Texture {
         Ok(Self { texture, size })
     }
 
-    pub fn empty(size: UVec2) -> anyhow::Result<Self> {
+    pub fn empty(size: UVec2) -> Self {
         let mut texture = 0;
         unsafe {
             gl::GenTextures(1, &raw mut texture);
@@ -100,7 +109,7 @@ impl Texture {
             gl::BindTexture(gl::TEXTURE_2D, 0);
         }
 
-        Ok(Self { texture, size })
+        Self { texture, size }
     }
 
     pub fn bind(&self) {

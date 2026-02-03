@@ -5,7 +5,7 @@ use std::{
 };
 
 use log::{Level, Log};
-use nix::sys::termios::{FlushArg, LocalFlags, SetArg, Termios, tcflush, tcgetattr, tcsetattr};
+use nix::{errno::Errno, sys::termios::{FlushArg, LocalFlags, SetArg, Termios, tcflush, tcgetattr, tcsetattr}};
 use parking_lot::Mutex;
 
 mod ffi;
@@ -24,9 +24,13 @@ pub struct TerminalGuard {
 
 static CREATED: AtomicBool = AtomicBool::new(false);
 impl TerminalGuard {
-    pub fn new() -> anyhow::Result<Self> {
+    /// # Errors
+    ///
+    /// Fails when a `TerminalGuard` is already in place.
+    /// Can also fail `tcgetattr` or `tcsetattr` calls.
+    pub fn new() -> Result<Self, Errno> {
         if CREATED.swap(true, Ordering::Relaxed) {
-            return Err(anyhow::anyhow!("terminal guard already in use"));
+            return Err(Errno::EALREADY);
         }
 
         let original = tcgetattr(std::io::stdin())?;
@@ -54,6 +58,9 @@ pub struct FileLogger {
 }
 
 impl FileLogger {
+    /// # Errors
+    ///
+    /// Might fail to open the log file.
     pub fn new(file_name: &str, level: Level) -> std::io::Result<Self> {
         let mut path = std::env::current_exe()?;
         path.pop();
@@ -66,6 +73,9 @@ impl FileLogger {
         })
     }
 
+    /// # Panics
+    ///
+    /// Panics when another logger was already initialized.
     pub fn init(self) {
         let max_level = self.level.to_level_filter();
         log::set_boxed_logger(Box::new(self)).unwrap();

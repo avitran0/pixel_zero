@@ -12,6 +12,17 @@ use drm::{
     control::{Device as ControlDevice, Mode, ModeTypeFlags, connector, crtc, framebuffer},
 };
 use glam::UVec2;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum DrmError {
+    #[error("I/O Error: {0}")]
+    IO(#[from] std::io::Error),
+    #[error("No Connectors found")]
+    NoConnectors,
+    #[error("No suitable CRTC found")]
+    NoCRTC,
+}
 
 struct OriginalState {
     crtc: crtc::Info,
@@ -29,7 +40,7 @@ pub(crate) struct Drm {
 }
 
 impl Drm {
-    pub(crate) fn load() -> anyhow::Result<Self> {
+    pub(crate) fn load() -> Result<Self, DrmError> {
         let gpu = Gpu::open()?;
 
         let resources = gpu.resource_handles()?;
@@ -40,7 +51,7 @@ impl Drm {
             .flat_map(|handle| gpu.get_connector(*handle, true))
             .find(|connector| connector.state() == connector::State::Connected)
         else {
-            return Err(anyhow::anyhow!("No connected connectors found"));
+            return Err(DrmError::NoConnectors);
         };
 
         let original_crtc = connector
@@ -87,7 +98,7 @@ impl Drm {
             .flat_map(|crtc| gpu.get_crtc(crtc))
             .next()
         else {
-            return Err(anyhow::anyhow!("No suitable CRTC found"));
+            return Err(DrmError::NoCRTC);
         };
 
         Ok(Self {

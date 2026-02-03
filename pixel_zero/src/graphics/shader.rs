@@ -16,7 +16,7 @@ pub struct Shader {
 }
 
 impl Shader {
-    pub fn load(vertex: &str, fragment: &str) -> anyhow::Result<Self> {
+    pub fn load(vertex: &str, fragment: &str) -> Result<Self, ShaderError> {
         let vertex = Self::compile(vertex, gl::VERTEX_SHADER)?;
         let fragment = Self::compile(fragment, gl::FRAGMENT_SHADER)?;
         let program = Self::link(vertex, fragment)?;
@@ -29,7 +29,7 @@ impl Shader {
         Ok(Self { program })
     }
 
-    fn compile(source: &str, kind: u32) -> anyhow::Result<u32> {
+    fn compile(source: &str, kind: u32) -> Result<u32, ShaderError> {
         let shader = unsafe { gl::CreateShader(kind) };
 
         unsafe {
@@ -74,13 +74,13 @@ impl Shader {
                 _ => "unknown",
             };
 
-            Err(anyhow::anyhow!(
+            Err(ShaderError::Compile(format!(
                 "Failed to compile {shader_type_str} shader: {error_log}"
-            ))
+            )))
         }
     }
 
-    fn link(vertex: u32, fragment: u32) -> anyhow::Result<u32> {
+    fn link(vertex: u32, fragment: u32) -> Result<u32, ShaderError> {
         let program = unsafe { gl::CreateProgram() };
 
         unsafe {
@@ -120,9 +120,9 @@ impl Shader {
                 gl::DeleteProgram(program);
             }
 
-            Err(anyhow::anyhow!(
+            Err(ShaderError::Linking(format!(
                 "Failed to link shader program: {error_log}"
-            ))
+            )))
         }
     }
 
