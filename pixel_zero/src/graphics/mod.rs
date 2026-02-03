@@ -70,8 +70,8 @@ impl Graphics {
         let color = ColorF32::from(color);
         unsafe {
             gl::ClearColor(color.r(), color.g(), color.b(), color.a());
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT)
-        };
+            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+        }
     }
 
     pub fn present(&mut self) -> anyhow::Result<()> {

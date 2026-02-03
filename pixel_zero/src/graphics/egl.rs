@@ -62,7 +62,7 @@ impl Egl {
 
         gl::load_with(|s| instance.get_proc_address(s).unwrap() as *const _);
 
-        unsafe { gl::Viewport(0, 0, gbm.size().x as i32, gbm.size().y as i32) };
+        unsafe { gl::Viewport(0, 0, gbm.size().x.cast_signed(), gbm.size().y.cast_signed()) };
 
         instance.swap_buffers(display, surface)?;
 

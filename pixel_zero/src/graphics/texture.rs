@@ -16,24 +16,40 @@ impl Texture {
 
         let mut texture = 0;
         unsafe {
-            gl::GenTextures(1, &mut texture);
+            gl::GenTextures(1, &raw mut texture);
             gl::BindTexture(gl::TEXTURE0, texture);
 
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MIN_FILTER,
+                gl::NEAREST.cast_signed(),
+            );
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MAG_FILTER,
+                gl::NEAREST.cast_signed(),
+            );
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE.cast_signed(),
+            );
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE.cast_signed(),
+            );
 
             gl::TexImage2D(
                 gl::TEXTURE_2D,
                 0,
-                gl::RGBA as i32,
-                size.x as i32,
-                size.y as i32,
+                gl::RGBA.cast_signed(),
+                size.x.cast_signed(),
+                size.y.cast_signed(),
                 0,
                 gl::RGBA,
                 gl::UNSIGNED_BYTE,
-                rgba_image.as_raw().as_ptr() as *const _,
+                rgba_image.as_raw().as_ptr().cast(),
             );
 
             gl::BindTexture(gl::TEXTURE_2D, 0);
@@ -45,20 +61,36 @@ impl Texture {
     pub fn empty(size: UVec2) -> anyhow::Result<Self> {
         let mut texture = 0;
         unsafe {
-            gl::GenTextures(1, &mut texture);
+            gl::GenTextures(1, &raw mut texture);
             gl::BindTexture(gl::TEXTURE0, texture);
 
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MIN_FILTER,
+                gl::NEAREST.cast_signed(),
+            );
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MAG_FILTER,
+                gl::NEAREST.cast_signed(),
+            );
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE.cast_signed(),
+            );
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE.cast_signed(),
+            );
 
             gl::TexImage2D(
                 gl::TEXTURE_2D,
                 0,
-                gl::RGBA as i32,
-                size.x as i32,
-                size.y as i32,
+                gl::RGBA.cast_signed(),
+                size.x.cast_signed(),
+                size.y.cast_signed(),
                 0,
                 gl::RGBA,
                 gl::UNSIGNED_BYTE,
@@ -77,17 +109,17 @@ impl Texture {
         }
     }
 
-    pub fn unbind(&self) {
+    pub fn unbind() {
         unsafe {
             gl::BindTexture(gl::TEXTURE_2D, 0);
         }
     }
 
-    pub fn size(&self) -> UVec2 {
+    pub const fn size(&self) -> UVec2 {
         self.size
     }
 
-    pub(crate) fn handle(&self) -> u32 {
+    pub(crate) const fn handle(&self) -> u32 {
         self.texture
     }
 }

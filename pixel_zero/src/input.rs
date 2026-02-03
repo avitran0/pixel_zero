@@ -133,9 +133,9 @@ impl Input {
         for device in &mut self.device_files {
             let mut buf = [0u8; std::mem::size_of::<InputEvent>()];
 
-            while let Ok(()) = device.read_exact(&mut buf) {
+            while matches!(device.read_exact(&mut buf), Ok(())) {
                 let event = unsafe {
-                    let ptr = buf.as_ptr() as *const InputEvent;
+                    let ptr = buf.as_ptr().cast::<InputEvent>();
                     &*ptr
                 };
 
@@ -144,29 +144,17 @@ impl Input {
                 }
 
                 let button = match event.code {
-                    KEY_UP => Button::Up,
-                    KEY_DOWN => Button::Down,
-                    KEY_LEFT => Button::Left,
-                    KEY_RIGHT => Button::Right,
+                    KEY_UP | BTN_DPAD_UP => Button::Up,
+                    KEY_DOWN | BTN_DPAD_DOWN => Button::Down,
+                    KEY_LEFT | BTN_DPAD_LEFT => Button::Left,
+                    KEY_RIGHT | BTN_DPAD_RIGHT => Button::Right,
 
-                    KEY_A => Button::A,
-                    KEY_B => Button::B,
-                    KEY_L => Button::L,
-                    KEY_R => Button::R,
-                    KEY_DOT => Button::Start,
-                    KEY_COMMA => Button::Select,
-
-                    BTN_DPAD_UP => Button::Up,
-                    BTN_DPAD_DOWN => Button::Down,
-                    BTN_DPAD_LEFT => Button::Left,
-                    BTN_DPAD_RIGHT => Button::Right,
-
-                    BTN_SOUTH => Button::A,
-                    BTN_EAST => Button::B,
-                    BTN_START => Button::Start,
-                    BTN_SELECT => Button::Select,
-                    BTN_TL => Button::L,
-                    BTN_TR => Button::R,
+                    KEY_A | BTN_SOUTH => Button::A,
+                    KEY_B | BTN_EAST => Button::B,
+                    KEY_DOT | BTN_START => Button::Start,
+                    KEY_COMMA | BTN_SELECT => Button::Select,
+                    KEY_L | BTN_TL => Button::L,
+                    KEY_R | BTN_TR => Button::R,
 
                     _ => continue,
                 };
@@ -182,16 +170,19 @@ impl Input {
         }
     }
 
+    #[must_use]
     pub fn is_pressed(&self, button: Button) -> bool {
         self.current_state.get(&button) == Some(&ButtonState::Pressed)
     }
 
+    #[must_use]
     pub fn just_pressed(&self, button: Button) -> bool {
         let current = self.current_state.get(&button) == Some(&ButtonState::Pressed);
         let previous = self.previous_state.get(&button) != Some(&ButtonState::Pressed);
         current && previous
     }
 
+    #[must_use]
     pub fn just_released(&self, button: Button) -> bool {
         let current = self.current_state.get(&button) == Some(&ButtonState::Released);
         let previous = self.previous_state.get(&button) != Some(&ButtonState::Released);

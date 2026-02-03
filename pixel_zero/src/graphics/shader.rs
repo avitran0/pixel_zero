@@ -11,7 +11,7 @@ pub enum ShaderError {
     Linking(String),
 }
 
-pub(crate) struct Shader {
+pub struct Shader {
     program: u32,
 }
 
@@ -33,7 +33,7 @@ impl Shader {
         let shader = unsafe { gl::CreateShader(kind) };
 
         unsafe {
-            let sources = [source.as_ptr() as *const i8];
+            let sources = [source.as_ptr().cast::<i8>()];
             let lengths = [source.len() as i32];
 
             gl::ShaderSource(shader, 1, sources.as_ptr(), lengths.as_ptr());
@@ -42,7 +42,7 @@ impl Shader {
 
         let mut success = 0;
         unsafe {
-            gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut success);
+            gl::GetShaderiv(shader, gl::COMPILE_STATUS, &raw mut success);
         }
 
         if success == 1 {
@@ -50,7 +50,7 @@ impl Shader {
         } else {
             let mut log_length = 0;
             unsafe {
-                gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut log_length);
+                gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &raw mut log_length);
             }
 
             let mut buffer = vec![0u8; log_length as usize];
@@ -59,7 +59,7 @@ impl Shader {
                     shader,
                     log_length,
                     std::ptr::null_mut(),
-                    buffer.as_mut_ptr() as *mut i8,
+                    buffer.as_mut_ptr().cast::<i8>(),
                 );
             }
 
@@ -75,9 +75,7 @@ impl Shader {
             };
 
             Err(anyhow::anyhow!(
-                "Failed to compile {} shader: {}",
-                shader_type_str,
-                error_log
+                "Failed to compile {shader_type_str} shader: {error_log}"
             ))
         }
     }
@@ -96,7 +94,7 @@ impl Shader {
 
         let mut success = 0;
         unsafe {
-            gl::GetProgramiv(program, gl::LINK_STATUS, &mut success);
+            gl::GetProgramiv(program, gl::LINK_STATUS, &raw mut success);
         }
 
         if success == 1 {
@@ -104,7 +102,7 @@ impl Shader {
         } else {
             let mut log_length = 0;
             unsafe {
-                gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut log_length);
+                gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &raw mut log_length);
             }
 
             let mut buffer = vec![0u8; log_length as usize];
@@ -113,7 +111,7 @@ impl Shader {
                     program,
                     log_length,
                     std::ptr::null_mut(),
-                    buffer.as_mut_ptr() as *mut i8,
+                    buffer.as_mut_ptr().cast::<i8>(),
                 );
             }
 
@@ -123,8 +121,7 @@ impl Shader {
             }
 
             Err(anyhow::anyhow!(
-                "Failed to link shader program: {}",
-                error_log
+                "Failed to link shader program: {error_log}"
             ))
         }
     }

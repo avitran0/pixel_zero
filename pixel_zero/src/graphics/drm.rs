@@ -83,7 +83,7 @@ impl Drm {
             .encoders()
             .iter()
             .flat_map(|handle| gpu.get_encoder(*handle))
-            .flat_map(|encoder| encoder.crtc())
+            .filter_map(|encoder| encoder.crtc())
             .flat_map(|crtc| gpu.get_crtc(crtc))
             .next()
         else {
@@ -101,8 +101,8 @@ impl Drm {
 
     pub(crate) fn size(&self) -> UVec2 {
         UVec2 {
-            x: self.mode.size().0 as u32,
-            y: self.mode.size().1 as u32,
+            x: u32::from(self.mode.size().0),
+            y: u32::from(self.mode.size().1),
         }
     }
 

@@ -16,7 +16,7 @@ impl Framebuffer {
     pub fn load() -> anyhow::Result<Self> {
         let mut framebuffer = 0;
         unsafe {
-            gl::GenFramebuffers(1, &mut framebuffer);
+            gl::GenFramebuffers(1, &raw mut framebuffer);
             gl::BindFramebuffer(gl::FRAMEBUFFER, framebuffer);
         }
 
