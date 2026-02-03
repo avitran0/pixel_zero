@@ -1,3 +1,6 @@
+use std::ffi::CString;
+
+use glam::{Mat4, Vec2, Vec3, Vec4};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -17,6 +20,12 @@ impl Shader {
         let vertex = Self::compile(vertex, gl::VERTEX_SHADER)?;
         let fragment = Self::compile(fragment, gl::FRAGMENT_SHADER)?;
         let program = Self::link(vertex, fragment)?;
+
+        unsafe {
+            gl::DeleteShader(vertex);
+            gl::DeleteShader(fragment);
+        }
+
         Ok(Self { program })
     }
 
@@ -117,6 +126,89 @@ impl Shader {
                 "Failed to link shader program: {}",
                 error_log
             ))
+        }
+    }
+
+    pub fn bind(&self) {
+        unsafe {
+            gl::UseProgram(self.program);
+        }
+    }
+
+    pub fn unbind() {
+        unsafe {
+            gl::UseProgram(0);
+        }
+    }
+
+    fn uniform_location(&self, name: &str) -> Option<i32> {
+        let cname = CString::new(name).ok()?;
+        let location = unsafe { gl::GetUniformLocation(self.program, cname.as_ptr()) };
+
+        if location >= 0 { Some(location) } else { None }
+    }
+
+    pub fn set_f32(&self, name: &str, value: f32) {
+        if let Some(loc) = self.uniform_location(name) {
+            unsafe {
+                gl::Uniform1f(loc, value);
+            }
+        }
+    }
+
+    pub fn set_i32(&self, name: &str, value: i32) {
+        if let Some(loc) = self.uniform_location(name) {
+            unsafe {
+                gl::Uniform1i(loc, value);
+            }
+        }
+    }
+
+    pub fn set_bool(&self, name: &str, value: bool) {
+        if let Some(loc) = self.uniform_location(name) {
+            unsafe {
+                gl::Uniform1i(loc, value as i32);
+            }
+        }
+    }
+
+    pub fn set_vec2(&self, name: &str, value: &Vec2) {
+        if let Some(loc) = self.uniform_location(name) {
+            unsafe {
+                gl::Uniform2f(loc, value.x, value.y);
+            }
+        }
+    }
+
+    pub fn set_vec3(&self, name: &str, value: &Vec3) {
+        if let Some(loc) = self.uniform_location(name) {
+            unsafe {
+                gl::Uniform3f(loc, value.x, value.y, value.z);
+            }
+        }
+    }
+
+    pub fn set_vec4(&self, name: &str, value: &Vec4) {
+        if let Some(loc) = self.uniform_location(name) {
+            unsafe {
+                gl::Uniform4f(loc, value.x, value.y, value.z, value.w);
+            }
+        }
+    }
+
+    pub fn set_mat4(&self, name: &str, value: &Mat4) {
+        if let Some(loc) = self.uniform_location(name) {
+            unsafe {
+                gl::UniformMatrix4fv(loc, 1, gl::FALSE, value.as_ref().as_ptr());
+            }
+        }
+    }
+}
+
+impl Drop for Shader {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteProgram(self.program);
         }
     }
 }
