@@ -33,7 +33,10 @@ impl Framebuffer {
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         }
 
-        let sprite_shader = Shader::load("", "")?;
+        let sprite_shader = Shader::load(
+            include_str!("shaders/sprite.vsh"),
+            include_str!("shaders/sprite.fsh"),
+        )?;
         let screen_shader = Shader::load("", "")?;
 
         Ok(Self {
