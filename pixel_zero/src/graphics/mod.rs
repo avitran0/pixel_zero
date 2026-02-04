@@ -11,6 +11,7 @@ use crate::graphics::{
     gbm::Gbm,
 };
 
+mod aseprite;
 pub mod color;
 mod drm;
 mod egl;

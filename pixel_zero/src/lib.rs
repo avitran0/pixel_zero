@@ -5,12 +5,16 @@ use std::{
 };
 
 use log::{Level, Log};
-use nix::{errno::Errno, sys::termios::{FlushArg, LocalFlags, SetArg, Termios, tcflush, tcgetattr, tcsetattr}};
+use nix::{
+    errno::Errno,
+    sys::termios::{FlushArg, LocalFlags, SetArg, Termios, tcflush, tcgetattr, tcsetattr},
+};
 use parking_lot::Mutex;
 
 mod ffi;
 pub mod graphics;
 pub mod input;
+mod io;
 
 pub const WIDTH: u32 = 320;
 pub const HEIGHT: u32 = 240;
