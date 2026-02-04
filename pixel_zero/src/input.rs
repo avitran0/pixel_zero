@@ -170,19 +170,16 @@ impl Input {
         }
     }
 
-    #[must_use]
     pub fn is_pressed(&self, button: Button) -> bool {
         self.current_state.get(&button) == Some(&ButtonState::Pressed)
     }
 
-    #[must_use]
     pub fn just_pressed(&self, button: Button) -> bool {
         let current = self.current_state.get(&button) == Some(&ButtonState::Pressed);
         let previous = self.previous_state.get(&button) != Some(&ButtonState::Pressed);
         current && previous
     }
 
-    #[must_use]
     pub fn just_released(&self, button: Button) -> bool {
         let current = self.current_state.get(&button) == Some(&ButtonState::Released);
         let previous = self.previous_state.get(&button) != Some(&ButtonState::Released);

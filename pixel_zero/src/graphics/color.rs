@@ -10,37 +10,30 @@ impl Color {
     pub const BLACK: Self = Self::rgb(0, 0, 0);
     pub const WHITE: Self = Self::rgb(255, 255, 255);
 
-    #[must_use]
     pub const fn rgb(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b, a: 255 }
     }
 
-    #[must_use]
     pub const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
     }
 
-    #[must_use]
     pub fn r(&self) -> u8 {
         self.r
     }
 
-    #[must_use]
     pub fn g(&self) -> u8 {
         self.g
     }
 
-    #[must_use]
     pub fn b(&self) -> u8 {
         self.b
     }
 
-    #[must_use]
     pub fn a(&self) -> u8 {
         self.a
     }
 
-    #[must_use]
     pub fn colorf32(&self) -> ColorF32 {
         ColorF32::from(self)
     }
@@ -79,37 +72,30 @@ impl ColorF32 {
     pub const BLACK: Self = Self::rgb(0.0, 0.0, 0.0);
     pub const WHITE: Self = Self::rgb(1.0, 1.0, 1.0);
 
-    #[must_use]
     pub const fn rgb(r: f32, g: f32, b: f32) -> Self {
         Self { r, g, b, a: 1.0 }
     }
 
-    #[must_use]
     pub const fn rgba(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }
 
-    #[must_use]
     pub fn r(&self) -> f32 {
         self.r
     }
 
-    #[must_use]
     pub fn g(&self) -> f32 {
         self.g
     }
 
-    #[must_use]
     pub fn b(&self) -> f32 {
         self.b
     }
 
-    #[must_use]
     pub fn a(&self) -> f32 {
         self.a
     }
 
-    #[must_use]
     pub fn color(&self) -> Color {
         Color::from(self)
     }
