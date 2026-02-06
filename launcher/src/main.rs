@@ -1,4 +1,4 @@
-use pixel_zero::{FileLogger, TerminalGuard};
+use pixel_zero::{log::FileLogger, terminal::TerminalGuard};
 
 use crate::launcher::Launcher;
 

@@ -40,7 +40,7 @@ pub trait ReadBytes: std::io::Read {
     fn read_i8(&mut self) -> Result<i8> {
         let mut buf = [0; 1];
         self.read_exact(&mut buf)?;
-        Ok(buf[0] as i8)
+        Ok(buf[0].cast_signed())
     }
 
     #[inline]
