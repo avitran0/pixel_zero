@@ -17,6 +17,7 @@ mod egl;
 mod frame;
 mod framebuffer;
 mod gbm;
+mod quad;
 mod shader;
 mod sprite;
 mod texture;

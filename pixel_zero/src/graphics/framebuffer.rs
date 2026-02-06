@@ -59,6 +59,7 @@ impl Framebuffer {
         sprite_shader.attributes(&[VertexAttribute::Vec2, VertexAttribute::Vec2]);
         let projection = Mat4::orthographic_rh(0.0, WIDTH as f32, HEIGHT as f32, 0.0, -1.0, 1.0);
         sprite_shader.set_uniform("u_projection", &Uniform::Mat4(projection));
+        sprite_shader.set_uniform("u_color", &Uniform::Vec3(Color::WHITE.vec3()));
 
         screen_shader.bind();
         screen_shader.attributes(&[VertexAttribute::Vec2, VertexAttribute::Vec2]);
@@ -99,6 +100,13 @@ impl Framebuffer {
             gl::ClearColor(color.r(), color.g(), color.b(), color.a());
             gl::Clear(gl::COLOR_BUFFER_BIT);
         }
+    }
+
+    pub(crate) fn present(&self) {
+        self.texture.bind();
+        self.unbind();
+        self.screen_shader.bind();
+
     }
 }
 

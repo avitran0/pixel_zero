@@ -1,3 +1,5 @@
+use glam::{Vec3, vec3};
+
 #[derive(Debug, Clone, Copy)]
 pub struct Color {
     r: u8,
@@ -32,6 +34,10 @@ impl Color {
 
     pub fn a(&self) -> u8 {
         self.a
+    }
+
+    pub fn vec3(&self) -> Vec3 {
+        self.f32().vec3()
     }
 
     pub fn f32(&self) -> ColorF32 {
@@ -77,5 +83,9 @@ impl ColorF32 {
 
     pub fn a(&self) -> f32 {
         self.a
+    }
+
+    pub fn vec3(&self) -> Vec3 {
+        vec3(self.r, self.g, self.b)
     }
 }
