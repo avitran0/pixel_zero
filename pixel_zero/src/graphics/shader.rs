@@ -156,6 +156,7 @@ impl Shader {
                     stride,
                     offset as *const _,
                 );
+                gl::EnableVertexAttribArray(index as u32);
             }
             offset += attribute.size_bytes();
         }
