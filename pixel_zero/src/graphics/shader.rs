@@ -149,17 +149,23 @@ impl Shader {
         &self,
         name: &str,
         index: u32,
-        size: i32,
         stride: i32,
         offset: u32,
-        kind: u32,
+        attribute: VertexAttribute,
     ) {
         let Some(location) = self.attribute_location(name) else {
             return;
         };
 
         unsafe {
-            gl::VertexAttribPointer(index, size, kind, gl::FALSE, stride, offset as *const _);
+            gl::VertexAttribPointer(
+                index,
+                attribute.gl_size(),
+                attribute.gl_type(),
+                gl::FALSE,
+                stride,
+                offset as *const _,
+            );
         }
     }
 
@@ -170,59 +176,9 @@ impl Shader {
         if location >= 0 { Some(location) } else { None }
     }
 
-    pub fn set_f32(&self, name: &str, value: f32) {
-        if let Some(loc) = self.uniform_location(name) {
-            unsafe {
-                gl::Uniform1f(loc, value);
-            }
-        }
-    }
-
-    pub fn set_i32(&self, name: &str, value: i32) {
-        if let Some(loc) = self.uniform_location(name) {
-            unsafe {
-                gl::Uniform1i(loc, value);
-            }
-        }
-    }
-
-    pub fn set_bool(&self, name: &str, value: bool) {
-        if let Some(loc) = self.uniform_location(name) {
-            unsafe {
-                gl::Uniform1i(loc, value as i32);
-            }
-        }
-    }
-
-    pub fn set_vec2(&self, name: &str, value: Vec2) {
-        if let Some(loc) = self.uniform_location(name) {
-            unsafe {
-                gl::Uniform2f(loc, value.x, value.y);
-            }
-        }
-    }
-
-    pub fn set_vec3(&self, name: &str, value: &Vec3) {
-        if let Some(loc) = self.uniform_location(name) {
-            unsafe {
-                gl::Uniform3f(loc, value.x, value.y, value.z);
-            }
-        }
-    }
-
-    pub fn set_vec4(&self, name: &str, value: &Vec4) {
-        if let Some(loc) = self.uniform_location(name) {
-            unsafe {
-                gl::Uniform4f(loc, value.x, value.y, value.z, value.w);
-            }
-        }
-    }
-
-    pub fn set_mat4(&self, name: &str, value: &Mat4) {
-        if let Some(loc) = self.uniform_location(name) {
-            unsafe {
-                gl::UniformMatrix4fv(loc, 1, gl::FALSE, value.as_ref().as_ptr());
-            }
+    pub fn set_uniform(&self, name: &str, uniform: &Uniform) {
+        if let Some(location) = self.uniform_location(name) {
+            uniform.set(location);
         }
     }
 }
@@ -231,6 +187,54 @@ impl Drop for Shader {
     fn drop(&mut self) {
         unsafe {
             gl::DeleteProgram(self.program);
+        }
+    }
+}
+
+pub(crate) enum Uniform {
+    Float(f32),
+    Vec2(Vec2),
+    Vec3(Vec3),
+    Vec4(Vec4),
+    Mat4(Mat4),
+}
+
+impl Uniform {
+    fn set(&self, location: i32) {
+        unsafe {
+            match self {
+                Self::Float(float) => gl::Uniform1f(location, *float),
+                Self::Vec2(vec) => gl::Uniform2f(location, vec.x, vec.y),
+                Self::Vec3(vec) => gl::Uniform3f(location, vec.x, vec.y, vec.z),
+                Self::Vec4(vec) => gl::Uniform4f(location, vec.x, vec.y, vec.z, vec.w),
+                Self::Mat4(mat) => {
+                    gl::UniformMatrix4fv(location, 1, gl::FALSE, mat.as_ref().as_ptr());
+                }
+            }
+        }
+    }
+}
+
+pub(crate) enum VertexAttribute {
+    Float,
+    Vec2,
+    Vec3,
+    Vec4,
+}
+
+impl VertexAttribute {
+    fn gl_size(&self) -> i32 {
+        match self {
+            Self::Float => 1,
+            Self::Vec2 => 2,
+            Self::Vec3 => 3,
+            Self::Vec4 => 4,
+        }
+    }
+
+    fn gl_type(&self) -> u32 {
+        match self {
+            Self::Float | Self::Vec2 | Self::Vec3 | Self::Vec4 => gl::FLOAT,
         }
     }
 }
