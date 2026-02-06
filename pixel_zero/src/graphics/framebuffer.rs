@@ -56,14 +56,12 @@ impl Framebuffer {
         )?;
 
         sprite_shader.bind();
-        sprite_shader.set_attribute("a_position", 0, 4, 0, VertexAttribute::Vec2);
-        sprite_shader.set_attribute("a_texcoord", 1, 4, 2, VertexAttribute::Vec2);
+        sprite_shader.attributes(&[VertexAttribute::Vec2, VertexAttribute::Vec2]);
         let projection = Mat4::orthographic_rh(0.0, WIDTH as f32, HEIGHT as f32, 0.0, -1.0, 1.0);
         sprite_shader.set_uniform("u_projection", &Uniform::Mat4(projection));
 
         screen_shader.bind();
-        screen_shader.set_attribute("a_position", 0, 4, 0, VertexAttribute::Vec2);
-        screen_shader.set_attribute("a_texcoord", 1, 4, 2, VertexAttribute::Vec2);
+        screen_shader.attributes(&[VertexAttribute::Vec2, VertexAttribute::Vec2]);
         screen_shader.set_uniform("u_screen_size", &Uniform::Vec2(screen_size.as_vec2()));
         Shader::unbind();
 

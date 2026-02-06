@@ -138,34 +138,26 @@ impl Shader {
         }
     }
 
-    fn attribute_location(&self, name: &str) -> Option<i32> {
-        let cname = CString::new(name).ok()?;
-        let location = unsafe { gl::GetAttribLocation(self.program, cname.as_ptr()) };
+    pub fn attributes(&self, attributes: &[VertexAttribute]) {
+        let stride = attributes
+            .iter()
+            .map(VertexAttribute::size_bytes)
+            .reduce(|acc, e| acc + e)
+            .unwrap() as i32;
 
-        if location >= 0 { Some(location) } else { None }
-    }
-
-    pub fn set_attribute(
-        &self,
-        name: &str,
-        index: u32,
-        stride: i32,
-        offset: u32,
-        attribute: VertexAttribute,
-    ) {
-        let Some(location) = self.attribute_location(name) else {
-            return;
-        };
-
-        unsafe {
-            gl::VertexAttribPointer(
-                index,
-                attribute.gl_size(),
-                attribute.gl_type(),
-                gl::FALSE,
-                stride,
-                offset as *const _,
-            );
+        let mut offset = 0;
+        for (index, attribute) in attributes.iter().enumerate() {
+            unsafe {
+                gl::VertexAttribPointer(
+                    index as u32,
+                    attribute.gl_size(),
+                    attribute.gl_type(),
+                    gl::FALSE,
+                    stride,
+                    offset as *const _,
+                );
+            }
+            offset += attribute.size_bytes();
         }
     }
 
@@ -229,6 +221,15 @@ impl VertexAttribute {
             Self::Vec2 => 2,
             Self::Vec3 => 3,
             Self::Vec4 => 4,
+        }
+    }
+
+    fn size_bytes(&self) -> usize {
+        match self {
+            Self::Float => size_of::<f32>(),
+            Self::Vec2 => size_of::<Vec2>(),
+            Self::Vec3 => size_of::<Vec3>(),
+            Self::Vec4 => size_of::<Vec4>(),
         }
     }
 
