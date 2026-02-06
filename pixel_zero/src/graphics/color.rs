@@ -34,34 +34,17 @@ impl Color {
         self.a
     }
 
-    pub fn colorf32(&self) -> ColorF32 {
-        ColorF32::from(self)
-    }
-}
-
-impl From<ColorF32> for Color {
-    fn from(value: ColorF32) -> Self {
-        Self {
-            r: (value.r * 255.0) as u8,
-            g: (value.g * 255.0) as u8,
-            b: (value.b * 255.0) as u8,
-            a: (value.a * 255.0) as u8,
+    pub fn f32(&self) -> ColorF32 {
+        ColorF32 {
+            r: f32::from(self.r) / 255.0,
+            g: f32::from(self.g) / 255.0,
+            b: f32::from(self.b) / 255.0,
+            a: f32::from(self.a) / 255.0,
         }
     }
 }
 
-impl From<&ColorF32> for Color {
-    fn from(value: &ColorF32) -> Self {
-        Self {
-            r: (value.r * 255.0) as u8,
-            g: (value.g * 255.0) as u8,
-            b: (value.b * 255.0) as u8,
-            a: (value.a * 255.0) as u8,
-        }
-    }
-}
-
-pub struct ColorF32 {
+pub(crate) struct ColorF32 {
     r: f32,
     g: f32,
     b: f32,
@@ -94,31 +77,5 @@ impl ColorF32 {
 
     pub fn a(&self) -> f32 {
         self.a
-    }
-
-    pub fn color(&self) -> Color {
-        Color::from(self)
-    }
-}
-
-impl From<Color> for ColorF32 {
-    fn from(value: Color) -> Self {
-        Self {
-            r: f32::from(value.r) / 255.0,
-            g: f32::from(value.g) / 255.0,
-            b: f32::from(value.b) / 255.0,
-            a: f32::from(value.a) / 255.0,
-        }
-    }
-}
-
-impl From<&Color> for ColorF32 {
-    fn from(value: &Color) -> Self {
-        Self {
-            r: f32::from(value.r) / 255.0,
-            g: f32::from(value.g) / 255.0,
-            b: f32::from(value.b) / 255.0,
-            a: f32::from(value.a) / 255.0,
-        }
     }
 }

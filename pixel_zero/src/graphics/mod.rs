@@ -54,7 +54,7 @@ impl Graphics {
             Some(*drm.mode()),
         )?;
 
-        let framebuffer = Framebuffer::load()?;
+        let framebuffer = Framebuffer::load(drm.size())?;
 
         Ok(Self {
             drm,
@@ -67,11 +67,7 @@ impl Graphics {
     }
 
     pub fn clear(&self, color: Color) {
-        let color = ColorF32::from(color);
-        unsafe {
-            gl::ClearColor(color.r(), color.g(), color.b(), color.a());
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        }
+        self.framebuffer.clear(color);
     }
 
     pub fn present(&mut self) -> anyhow::Result<()> {

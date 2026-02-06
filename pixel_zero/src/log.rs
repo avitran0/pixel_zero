@@ -12,6 +12,13 @@ pub struct FileLogger {
 }
 
 impl FileLogger {
+    /// # Panics
+    ///
+    /// yes
+    pub fn install(file_name: &str, level: Level) {
+        Self::new(file_name, level).unwrap().init();
+    }
+
     /// # Errors
     ///
     /// Might fail to open the log file.

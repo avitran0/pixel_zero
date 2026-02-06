@@ -6,9 +6,7 @@ mod launcher;
 mod screen;
 
 fn main() {
-    FileLogger::new("launcher.log", log::Level::Info)
-        .unwrap()
-        .init();
+    FileLogger::install("launcher.log", log::Level::Info);
 
     let _guard = TerminalGuard::new().unwrap();
     Launcher::new().run();

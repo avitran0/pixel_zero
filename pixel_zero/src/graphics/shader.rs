@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::{collections::HashMap, ffi::CString};
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use thiserror::Error;
@@ -138,6 +138,31 @@ impl Shader {
         }
     }
 
+    fn attribute_location(&self, name: &str) -> Option<i32> {
+        let cname = CString::new(name).ok()?;
+        let location = unsafe { gl::GetAttribLocation(self.program, cname.as_ptr()) };
+
+        if location >= 0 { Some(location) } else { None }
+    }
+
+    pub fn set_attribute(
+        &self,
+        name: &str,
+        index: u32,
+        size: i32,
+        stride: i32,
+        offset: u32,
+        kind: u32,
+    ) {
+        let Some(location) = self.attribute_location(name) else {
+            return;
+        };
+
+        unsafe {
+            gl::VertexAttribPointer(index, size, kind, gl::FALSE, stride, offset as *const _);
+        }
+    }
+
     fn uniform_location(&self, name: &str) -> Option<i32> {
         let cname = CString::new(name).ok()?;
         let location = unsafe { gl::GetUniformLocation(self.program, cname.as_ptr()) };
@@ -169,7 +194,7 @@ impl Shader {
         }
     }
 
-    pub fn set_vec2(&self, name: &str, value: &Vec2) {
+    pub fn set_vec2(&self, name: &str, value: Vec2) {
         if let Some(loc) = self.uniform_location(name) {
             unsafe {
                 gl::Uniform2f(loc, value.x, value.y);

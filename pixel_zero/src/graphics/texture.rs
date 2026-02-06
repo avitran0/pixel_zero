@@ -26,7 +26,7 @@ impl Texture {
         let mut texture = 0;
         unsafe {
             gl::GenTextures(1, &raw mut texture);
-            gl::BindTexture(gl::TEXTURE0, texture);
+            gl::BindTexture(gl::TEXTURE_2D, texture);
 
             gl::TexParameteri(
                 gl::TEXTURE_2D,
@@ -71,7 +71,7 @@ impl Texture {
         let mut texture = 0;
         unsafe {
             gl::GenTextures(1, &raw mut texture);
-            gl::BindTexture(gl::TEXTURE0, texture);
+            gl::BindTexture(gl::TEXTURE_2D, texture);
 
             gl::TexParameteri(
                 gl::TEXTURE_2D,
