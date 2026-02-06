@@ -6,7 +6,7 @@ use std::{
 
 use thiserror::Error;
 
-use crate::io::ReadBytes as _;
+use crate::io::ReadBytes;
 
 #[derive(Debug, Error)]
 pub enum AsepriteError {
@@ -39,7 +39,7 @@ impl AsepriteImage {
 
         let color_depth = reader.read_u16()?;
         let color_depth = match color_depth {
-            32 => ColorDepth::RGBA,
+            32 => ColorDepth::Rgba,
             16 => ColorDepth::Grayscale,
             8 => ColorDepth::Indexed,
             _ => return Err(AsepriteError::InvalidColorDepth(color_depth)),
@@ -63,6 +63,13 @@ impl AsepriteImage {
             } else {
                 new_chunk_count
             };
+
+            for chunk in 0..chunk_count {
+                let size = reader.read_u32()?;
+                let kind = reader.read_u16()?;
+
+                let data = reader.read_bytes(size as usize)?;
+            }
         }
 
         Err(AsepriteError::InvalidFrameMagic(0))
@@ -70,7 +77,7 @@ impl AsepriteImage {
 }
 
 enum ColorDepth {
-    RGBA,
+    Rgba,
     Grayscale,
     Indexed,
 }
