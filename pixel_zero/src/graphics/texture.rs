@@ -1,7 +1,7 @@
-use std::path::Path;
+use std::{io::Cursor, path::Path};
 
 use glam::{UVec2, uvec2};
-use image::ImageReader;
+use image::{ImageReader, RgbaImage};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -23,51 +23,28 @@ impl Texture {
         let rgba_image = image.to_rgba8();
         let size = uvec2(image.width(), image.height());
 
-        let mut texture = 0;
-        unsafe {
-            gl::GenTextures(1, &raw mut texture);
-            gl::BindTexture(gl::TEXTURE_2D, texture);
+        let texture = Self::crate_texture(size, Some(rgba_image));
 
-            gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_MIN_FILTER,
-                gl::NEAREST.cast_signed(),
-            );
-            gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_MAG_FILTER,
-                gl::NEAREST.cast_signed(),
-            );
-            gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_S,
-                gl::CLAMP_TO_EDGE.cast_signed(),
-            );
-            gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_T,
-                gl::CLAMP_TO_EDGE.cast_signed(),
-            );
+        Ok(Self { texture, size })
+    }
 
-            gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                gl::RGBA.cast_signed(),
-                size.x.cast_signed(),
-                size.y.cast_signed(),
-                0,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                rgba_image.as_raw().as_ptr().cast(),
-            );
+    pub fn load_binary(bytes: &[u8]) -> Result<Self, TextureError> {
+        let cursor = Cursor::new(bytes);
+        let image = ImageReader::new(cursor).decode()?;
+        let rgba_image = image.to_rgba8();
+        let size = uvec2(image.width(), image.height());
 
-            gl::BindTexture(gl::TEXTURE_2D, 0);
-        }
+        let texture = Self::crate_texture(size, Some(rgba_image));
 
         Ok(Self { texture, size })
     }
 
     pub fn empty(size: UVec2) -> Self {
+        let texture = Self::crate_texture(size, None);
+        Self { texture, size }
+    }
+
+    fn crate_texture(size: UVec2, data: Option<RgbaImage>) -> u32 {
         let mut texture = 0;
         unsafe {
             gl::GenTextures(1, &raw mut texture);
@@ -94,6 +71,11 @@ impl Texture {
                 gl::CLAMP_TO_EDGE.cast_signed(),
             );
 
+            let pixels = if let Some(data) = data {
+                data.as_raw().as_ptr().cast()
+            } else {
+                std::ptr::null()
+            };
             gl::TexImage2D(
                 gl::TEXTURE_2D,
                 0,
@@ -103,13 +85,13 @@ impl Texture {
                 0,
                 gl::RGBA,
                 gl::UNSIGNED_BYTE,
-                std::ptr::null(),
+                pixels,
             );
 
             gl::BindTexture(gl::TEXTURE_2D, 0);
         }
 
-        Self { texture, size }
+        texture
     }
 
     pub fn bind(&self) {
