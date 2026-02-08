@@ -9,7 +9,8 @@ use crate::graphics::{
     drm::Drm,
     egl::Egl,
     framebuffer::Framebuffer,
-    gbm::Gbm, sprite::Sprite,
+    gbm::Gbm,
+    sprite::Sprite,
 };
 
 pub mod color;
@@ -103,5 +104,27 @@ impl Graphics {
         self.drm_fb = drm_fb;
 
         Ok(())
+    }
+
+    pub fn check_error(&self) {
+        loop {
+            let error = unsafe { gl::GetError() };
+            if error == gl::NO_ERROR {
+                break;
+            }
+
+            let err_str = match error {
+                gl::INVALID_ENUM => "Invalid Enum",
+                gl::INVALID_VALUE => "Invalid Value",
+                gl::INVALID_OPERATION => "Invalid Operation",
+                gl::INVALID_FRAMEBUFFER_OPERATION => "Invalid Framebuffer Operation",
+                gl::OUT_OF_MEMORY => "Out Of Memory",
+                gl::STACK_UNDERFLOW => "Stack Underflow",
+                gl::STACK_OVERFLOW => "Stack Overflow",
+                _ => "?",
+            };
+
+            log::error!("opengl error {error}: {err_str}");
+        }
     }
 }

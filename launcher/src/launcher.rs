@@ -42,6 +42,7 @@ impl Launcher {
             self.graphics.draw_sprite(&sprite, uvec2(20, 20));
             self.screen.render(&self.graphics);
             self.graphics.present().unwrap();
+            self.graphics.check_error();
         }
     }
 }
