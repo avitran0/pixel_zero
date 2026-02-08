@@ -58,22 +58,31 @@ impl Framebuffer {
             include_str!("shaders/screen.frag"),
         )?;
 
+        let quad = Quad::new();
+        quad.bind_vao();
+        quad.bind_vbo();
+
         sprite_shader.bind();
         sprite_shader.attributes(&[VertexAttribute::Vec2, VertexAttribute::Vec2]);
         let projection = Mat4::orthographic_rh(0.0, WIDTH as f32, HEIGHT as f32, 0.0, -1.0, 1.0);
         sprite_shader.set_uniform("u_projection", &Uniform::Mat4(projection));
         sprite_shader.set_uniform("u_color", &Uniform::Vec3(Color::WHITE.vec3()));
+        sprite_shader.set_uniform("u_texture", &Uniform::Int(0));
 
         screen_shader.bind();
         screen_shader.attributes(&[VertexAttribute::Vec2, VertexAttribute::Vec2]);
         screen_shader.set_uniform("u_screen_size", &Uniform::Vec2(screen_size.as_vec2()));
-        Shader::unbind();
+        screen_shader.set_uniform("u_texture", &Uniform::Int(0));
 
-        let quad = Quad::new();
+        Shader::unbind();
+        Quad::unbind_vao();
+        Quad::unbind_vbo();
 
         unsafe {
             // gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
             gl::ActiveTexture(gl::TEXTURE0);
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
         }
 
         Ok(Self {

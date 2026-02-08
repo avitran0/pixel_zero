@@ -11,12 +11,10 @@ impl Quad {
 
     pub fn new() -> Self {
         let mut vao = 0;
+        let mut vbo = 0;
+        
         unsafe {
             gl::GenVertexArrays(1, &raw mut vao);
-        }
-
-        let mut vbo = 0;
-        unsafe {
             gl::GenBuffers(1, &raw mut vbo);
             gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
             gl::BufferData(

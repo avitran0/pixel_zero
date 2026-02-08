@@ -185,6 +185,7 @@ impl Drop for Shader {
 }
 
 pub(crate) enum Uniform {
+    Int(i32),
     Float(f32),
     Vec2(Vec2),
     Vec3(Vec3),
@@ -196,6 +197,7 @@ impl Uniform {
     fn set(&self, location: i32) {
         unsafe {
             match self {
+                Self::Int(int) => gl::Uniform1i(location, *int),
                 Self::Float(float) => gl::Uniform1f(location, *float),
                 Self::Vec2(vec) => gl::Uniform2f(location, vec.x, vec.y),
                 Self::Vec3(vec) => gl::Uniform3f(location, vec.x, vec.y, vec.z),
