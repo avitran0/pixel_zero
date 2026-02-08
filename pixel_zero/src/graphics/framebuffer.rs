@@ -4,7 +4,9 @@ use crate::{
     HEIGHT, WIDTH,
     graphics::{
         color::Color,
+        quad::Quad,
         shader::{Shader, ShaderError, Uniform, VertexAttribute},
+        sprite::Sprite,
         texture::Texture,
     },
 };
@@ -15,6 +17,7 @@ pub(crate) struct Framebuffer {
     sprite_shader: Shader,
     screen_shader: Shader,
     screen_size: UVec2,
+    quad: Quad,
 }
 
 impl Framebuffer {
@@ -46,11 +49,11 @@ impl Framebuffer {
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         }
 
-        let mut sprite_shader = Shader::load(
+        let sprite_shader = Shader::load(
             include_str!("shaders/sprite.vert"),
             include_str!("shaders/sprite.frag"),
         )?;
-        let mut screen_shader = Shader::load(
+        let screen_shader = Shader::load(
             include_str!("shaders/screen.vert"),
             include_str!("shaders/screen.frag"),
         )?;
@@ -66,12 +69,15 @@ impl Framebuffer {
         screen_shader.set_uniform("u_screen_size", &Uniform::Vec2(screen_size.as_vec2()));
         Shader::unbind();
 
+        let quad = Quad::new();
+
         Ok(Self {
             framebuffer,
             texture,
             sprite_shader,
             screen_shader,
             screen_size,
+            quad,
         })
     }
 
@@ -102,11 +108,37 @@ impl Framebuffer {
         }
     }
 
-    pub(crate) fn present(&self) {
-        self.texture.bind();
-        self.unbind();
-        self.screen_shader.bind();
+    pub(crate) fn draw_sprite(&self, sprite: &Sprite, position: UVec2) {
+        self.bind();
+        self.sprite_shader.bind();
+        self.sprite_shader
+            .set_uniform("u_position", &Uniform::Vec2(position.as_vec2()));
+        sprite.texture.bind();
+        self.quad.bind_vao();
 
+        unsafe {
+            gl::DrawArrays(gl::TRIANGLES, 0, 6);
+        }
+
+        Texture::unbind();
+        Quad::unbind_vao();
+        Shader::unbind();
+    }
+
+    pub(crate) fn present(&self) {
+        self.unbind();
+
+        self.texture.bind();
+        self.screen_shader.bind();
+        self.quad.bind_vao();
+
+        unsafe {
+            gl::DrawArrays(gl::TRIANGLES, 0, 6);
+        }
+
+        Texture::unbind();
+        Quad::unbind_vao();
+        Shader::unbind();
     }
 }
 

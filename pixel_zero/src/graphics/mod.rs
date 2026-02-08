@@ -2,13 +2,14 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer as drmfb};
 use ::gbm::BufferObject;
+use glam::UVec2;
 
 use crate::graphics::{
     color::{Color, ColorF32},
     drm::Drm,
     egl::Egl,
     framebuffer::Framebuffer,
-    gbm::Gbm,
+    gbm::Gbm, sprite::Sprite,
 };
 
 pub mod color;
@@ -19,7 +20,7 @@ mod framebuffer;
 mod gbm;
 mod quad;
 mod shader;
-mod sprite;
+pub mod sprite;
 mod texture;
 
 pub struct Graphics {
@@ -71,7 +72,13 @@ impl Graphics {
         self.framebuffer.clear(color);
     }
 
+    pub fn draw_sprite(&self, sprite: &Sprite, position: UVec2) {
+        self.framebuffer.draw_sprite(sprite, position);
+    }
+
     pub fn present(&mut self) -> anyhow::Result<()> {
+        self.framebuffer.present();
+
         self.egl
             .instance()
             .swap_buffers(self.egl.display(), self.egl.surface())?;

@@ -1,7 +1,8 @@
 use std::time::{Duration, Instant};
 
+use glam::uvec2;
 use pixel_zero::{
-    graphics::{Graphics, color::Color},
+    graphics::{Graphics, color::Color, sprite::Sprite},
     input::{Button, Input},
 };
 
@@ -29,6 +30,7 @@ impl Launcher {
     }
 
     pub fn run(&mut self) {
+        let sprite = Sprite::load("redstone.png").unwrap();
         while !self.exit && self.start.elapsed() < TIME {
             self.input.update();
             if self.input.just_pressed(Button::A) {
@@ -37,6 +39,7 @@ impl Launcher {
             }
             self.screen.update(&self.input);
             self.graphics.clear(Color::rgb(100, 150, 240));
+            self.graphics.draw_sprite(&sprite, uvec2(20, 20));
             self.screen.render(&self.graphics);
             self.graphics.present().unwrap();
         }

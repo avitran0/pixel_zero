@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::graphics::texture::Texture;
 
 pub struct Sprite {
-    texture: Texture,
+    pub(crate) texture: Texture,
 }
 
 impl Sprite {
