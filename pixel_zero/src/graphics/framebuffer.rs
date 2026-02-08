@@ -71,6 +71,10 @@ impl Framebuffer {
 
         let quad = Quad::new();
 
+        unsafe {
+            gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
+        }
+
         Ok(Self {
             framebuffer,
             texture,
@@ -101,11 +105,13 @@ impl Framebuffer {
     }
 
     pub(crate) fn clear(&self, color: Color) {
+        self.bind();
         let color = color.f32();
         unsafe {
             gl::ClearColor(color.r(), color.g(), color.b(), color.a());
             gl::Clear(gl::COLOR_BUFFER_BIT);
         }
+        self.unbind();
     }
 
     pub(crate) fn draw_sprite(&self, sprite: &Sprite, position: UVec2) {
@@ -123,6 +129,7 @@ impl Framebuffer {
         Texture::unbind();
         Quad::unbind_vao();
         Shader::unbind();
+        self.unbind();
     }
 
     pub(crate) fn present(&self) {
