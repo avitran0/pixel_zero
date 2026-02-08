@@ -72,7 +72,8 @@ impl Framebuffer {
         let quad = Quad::new();
 
         unsafe {
-            gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
+            // gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
+            gl::ActiveTexture(gl::TEXTURE0);
         }
 
         Ok(Self {
