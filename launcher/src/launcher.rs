@@ -30,7 +30,7 @@ impl Launcher {
     }
 
     pub fn run(&mut self) {
-        let sprite = Sprite::load("redstone.png").unwrap();
+        let sprite = Sprite::load_binary(include_bytes!("redstone.png")).unwrap();
         while !self.exit && self.start.elapsed() < TIME {
             self.input.update();
             if self.input.just_pressed(Button::A) {
