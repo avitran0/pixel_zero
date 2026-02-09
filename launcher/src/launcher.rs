@@ -39,7 +39,8 @@ impl Launcher {
             }
             self.screen.update(&self.input);
             self.graphics.clear(Color::rgb(100, 150, 240));
-            self.graphics.draw_sprite(&sprite, uvec2(20, 20));
+            self.graphics.draw_sprite(&sprite, uvec2(0, 0));
+            self.graphics.draw_sprite(&sprite, uvec2(50, 50));
             self.screen.render(&self.graphics);
             self.graphics.present().unwrap();
             self.graphics.check_error();
