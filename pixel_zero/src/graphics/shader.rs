@@ -169,7 +169,7 @@ impl Shader {
         if location >= 0 { Some(location) } else { None }
     }
 
-    pub fn set_uniform(&self, name: &str, uniform: &Uniform) {
+    pub fn set_uniform(&self, name: &str, uniform: Uniform) {
         if let Some(location) = self.uniform_location(name) {
             uniform.set(location);
         }

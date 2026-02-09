@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer as drmfb};
 use ::gbm::BufferObject;
-use glam::UVec2;
+use glam::IVec2;
 
 use crate::graphics::{
     color::Color, drm::Drm, egl::Egl, framebuffer::Framebuffer, gbm::Gbm, sprite::Sprite,
@@ -68,7 +68,7 @@ impl Graphics {
         self.framebuffer.clear(color);
     }
 
-    pub fn draw_sprite(&self, sprite: &Sprite, position: UVec2) {
+    pub fn draw_sprite(&self, sprite: &Sprite, position: IVec2) {
         self.framebuffer.draw_sprite(sprite, position);
     }
 

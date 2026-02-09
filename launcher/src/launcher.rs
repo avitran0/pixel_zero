@@ -1,4 +1,4 @@
-use glam::{Vec2, uvec2};
+use glam::{Vec2, ivec2};
 use pixel_zero::{
     graphics::{Graphics, color::Color, sprite::Sprite},
     input::{Button, Input},
@@ -50,7 +50,7 @@ impl Launcher {
             self.graphics.clear(Color::rgb(100, 150, 240));
 
             self.graphics
-                .draw_sprite(&sprite, uvec2(position.x as u32, position.y as u32));
+                .draw_sprite(&sprite, ivec2(position.x as i32, position.y as i32));
             self.screen.render(&self.graphics);
 
             self.graphics.present().unwrap();

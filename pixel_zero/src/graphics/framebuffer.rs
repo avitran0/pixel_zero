@@ -1,4 +1,4 @@
-use glam::{Mat4, UVec2, uvec2};
+use glam::{IVec2, Mat4, UVec2, uvec2};
 
 use crate::{
     HEIGHT, WIDTH,
@@ -65,14 +65,14 @@ impl Framebuffer {
         sprite_shader.bind();
         sprite_shader.attributes(&[VertexAttribute::Vec2, VertexAttribute::Vec2]);
         let projection = Mat4::orthographic_rh(0.0, WIDTH as f32, HEIGHT as f32, 0.0, -1.0, 1.0);
-        sprite_shader.set_uniform("u_projection", &Uniform::Mat4(projection));
-        sprite_shader.set_uniform("u_color", &Uniform::Vec3(Color::WHITE.vec3()));
-        sprite_shader.set_uniform("u_texture", &Uniform::Int(0));
+        sprite_shader.set_uniform("u_projection", Uniform::Mat4(projection));
+        sprite_shader.set_uniform("u_color", Uniform::Vec3(Color::WHITE.vec3()));
+        sprite_shader.set_uniform("u_texture", Uniform::Int(0));
 
         screen_shader.bind();
         screen_shader.attributes(&[VertexAttribute::Vec2, VertexAttribute::Vec2]);
-        screen_shader.set_uniform("u_screen_size", &Uniform::Vec2(screen_size.as_vec2()));
-        screen_shader.set_uniform("u_texture", &Uniform::Int(0));
+        screen_shader.set_uniform("u_screen_size", Uniform::Vec2(screen_size.as_vec2()));
+        screen_shader.set_uniform("u_texture", Uniform::Int(0));
 
         Shader::unbind();
         Quad::unbind_vao();
@@ -124,13 +124,13 @@ impl Framebuffer {
         self.unbind();
     }
 
-    pub(crate) fn draw_sprite(&self, sprite: &Sprite, position: UVec2) {
+    pub(crate) fn draw_sprite(&self, sprite: &Sprite, position: IVec2) {
         self.bind();
         self.sprite_shader.bind();
         self.sprite_shader
-            .set_uniform("u_position", &Uniform::Vec2(position.as_vec2()));
+            .set_uniform("u_position", Uniform::Vec2(position.as_vec2()));
         self.sprite_shader
-            .set_uniform("u_size", &Uniform::Vec2(sprite.texture.size().as_vec2()));
+            .set_uniform("u_size", Uniform::Vec2(sprite.texture.size().as_vec2()));
         sprite.texture.bind();
         self.quad.bind_vao();
 
