@@ -30,7 +30,7 @@ impl Texture {
 
     pub fn load_binary(bytes: &[u8]) -> Result<Self, TextureError> {
         let cursor = Cursor::new(bytes);
-        let image = ImageReader::new(cursor).decode()?;
+        let image = ImageReader::new(cursor).with_guessed_format()?.decode()?;
         let rgba_image = image.to_rgba8();
         let size = uvec2(image.width(), image.height());
 
