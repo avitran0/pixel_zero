@@ -129,6 +129,8 @@ impl Framebuffer {
         self.sprite_shader.bind();
         self.sprite_shader
             .set_uniform("u_position", &Uniform::Vec2(position.as_vec2()));
+        self.sprite_shader
+            .set_uniform("u_size", &Uniform::Vec2(sprite.texture.size().as_vec2()));
         sprite.texture.bind();
         self.quad.bind_vao();
 
