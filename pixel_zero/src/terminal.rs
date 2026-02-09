@@ -32,11 +32,11 @@ impl TerminalGuard {
 
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
-        if tcflush(std::io::stdin(), FlushArg::TCIFLUSH).is_err() {
-            log::error!("failed to flush stdin");
+        if let Err(e) = tcflush(std::io::stdin(), FlushArg::TCIFLUSH) {
+            log::error!("failed to flush stdin: {e}");
         }
-        if tcsetattr(std::io::stdin(), SetArg::TCSANOW, &self.original).is_err() {
-            log::error!("failed to reset termios");
+        if let Err(e) = tcsetattr(std::io::stdin(), SetArg::TCSANOW, &self.original) {
+            log::error!("failed to reset termios: {e}");
         }
         CREATED.store(false, Ordering::Relaxed);
     }

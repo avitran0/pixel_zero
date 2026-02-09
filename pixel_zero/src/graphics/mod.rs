@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer as drmfb};
-use ::gbm::BufferObject;
+use drm::control::{self, framebuffer as drmfb, Device as _, PageFlipFlags};
+use gbm::BufferObject;
 use glam::UVec2;
 
 use crate::graphics::{
@@ -121,5 +121,14 @@ impl Graphics {
 
             log::error!("opengl error {error}: {err_str}");
         }
+    }
+}
+
+impl Drop for Graphics {
+    fn drop(&mut self) {
+        if let Err(e) = self.drm.gpu().destroy_framebuffer(self.drm_fb) {
+            log::error!("failed to destroy framebuffer on Graphics drop: {e}");
+        }
+        LOADED.store(false, Ordering::Relaxed);
     }
 }
