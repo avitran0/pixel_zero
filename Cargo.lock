@@ -330,7 +330,6 @@ dependencies = [
 name = "pixel_zero"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "drm",
  "gbm",
  "gl",

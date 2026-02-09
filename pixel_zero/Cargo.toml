@@ -15,7 +15,6 @@ codegen-units = 1
 lto = "fat"
 
 [dependencies]
-anyhow = { workspace = true }
 glam = { workspace = true }
 log = { workspace = true }
 thiserror = { workspace = true }

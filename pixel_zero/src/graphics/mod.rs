@@ -90,7 +90,7 @@ impl Graphics {
         self.framebuffer.draw_sprite(sprite, position);
     }
 
-    pub fn present(&mut self) -> anyhow::Result<()> {
+    pub fn present(&mut self) -> Result<(), GraphicsError> {
         self.framebuffer.present();
 
         self.egl
