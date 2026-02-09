@@ -14,7 +14,6 @@ pub struct Launcher {
     graphics: Graphics,
     input: Input,
     screen: Box<dyn Screen>,
-    start: Instant,
     exit: bool,
 }
 
@@ -24,7 +23,6 @@ impl Launcher {
             graphics: Graphics::load().unwrap(),
             input: Input::default(),
             screen: Box::new(GameMenu::new()),
-            start: Instant::now(),
             exit: false,
         }
     }
@@ -34,7 +32,7 @@ impl Launcher {
         let mut position = Vec2::new(0.0, 0.0);
         const SPEED: f32 = 0.1;
 
-        while !self.exit && self.start.elapsed() < TIME {
+        while !self.exit {
             self.input.update();
             if self.input.just_pressed(Button::A) {
                 println!("exiting");
