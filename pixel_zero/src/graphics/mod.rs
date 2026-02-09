@@ -1,11 +1,12 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer as drmfb};
-use ::gbm::BufferObject;
+use ::gbm::{BufferObject, FrontBufferError};
 use glam::IVec2;
+use thiserror::Error;
 
 use crate::graphics::{
-    color::Color, drm::Drm, egl::Egl, framebuffer::Framebuffer, gbm::Gbm, sprite::Sprite,
+    color::Color, drm::{Drm, DrmError}, egl::Egl, framebuffer::Framebuffer, gbm::Gbm, shader::ShaderError, sprite::Sprite
 };
 
 pub mod color;
@@ -20,6 +21,22 @@ mod shader;
 pub mod sprite;
 mod texture;
 
+#[derive(Debug, Error)]
+pub enum GraphicsError {
+    #[error("I/O Error: {0}")]
+    IO(#[from] std::io::Error),
+    #[error("DRM Error: {0}")]
+    Drm(#[from] DrmError),
+    #[error("EGL Error: {0}")]
+    Egl(#[from] khronos_egl::Error),
+    #[error("Shader Error: {0}")]
+    Shader(#[from] ShaderError),
+    #[error("Front Buffer Error: {0}")]
+    FrontBuffer(#[from] FrontBufferError),
+    #[error("Graphics is already loaded")]
+    AlreadyLoaded,
+}
+
 pub struct Graphics {
     drm: Drm,
     gbm: Gbm,
@@ -33,9 +50,9 @@ pub struct Graphics {
 
 static LOADED: AtomicBool = AtomicBool::new(false);
 impl Graphics {
-    pub fn load() -> anyhow::Result<Self> {
+    pub fn load() -> Result<Self, GraphicsError> {
         if LOADED.swap(true, Ordering::Relaxed) {
-            return Err(anyhow::anyhow!("graphics already loaded"));
+            return Err(GraphicsError::AlreadyLoaded);
         }
 
         let drm = Drm::load()?;

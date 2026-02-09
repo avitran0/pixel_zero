@@ -12,7 +12,7 @@ pub(crate) struct Gbm {
 }
 
 impl Gbm {
-    pub(crate) fn load(drm: &Drm) -> anyhow::Result<Self> {
+    pub(crate) fn load(drm: &Drm) -> std::io::Result<Self> {
         let size = drm.size();
         let device = Device::new(drm.gpu_arc())?;
         log::info!("gbm backend: {}", device.backend_name());
@@ -41,7 +41,7 @@ impl Gbm {
         self.size
     }
 
-    pub(crate) fn init_surface(&mut self, format: gbm::Format) -> anyhow::Result<()> {
+    pub(crate) fn init_surface(&mut self, format: gbm::Format) -> std::io::Result<()> {
         let surface = self.device.create_surface(
             self.size.x,
             self.size.y,

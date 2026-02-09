@@ -134,9 +134,7 @@ impl Framebuffer {
         sprite.texture.bind();
         self.quad.bind_vao();
 
-        unsafe {
-            gl::DrawArrays(gl::TRIANGLES, 0, 6);
-        }
+        self.quad.draw();
 
         Texture::unbind();
         Quad::unbind_vao();
@@ -151,9 +149,7 @@ impl Framebuffer {
         self.screen_shader.bind();
         self.quad.bind_vao();
 
-        unsafe {
-            gl::DrawArrays(gl::TRIANGLES, 0, 6);
-        }
+        self.quad.draw();
 
         Texture::unbind();
         Quad::unbind_vao();

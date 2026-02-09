@@ -51,6 +51,12 @@ impl Quad {
             gl::BindBuffer(gl::ARRAY_BUFFER, 0);
         }
     }
+
+    pub fn draw(&self) {
+        unsafe {
+            gl::DrawArrays(gl::TRIANGLES, 0, 6);
+        }
+    }
 }
 
 impl Drop for Quad {

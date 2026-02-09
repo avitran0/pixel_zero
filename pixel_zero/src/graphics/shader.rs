@@ -4,19 +4,19 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum ShaderError {
+pub(crate) enum ShaderError {
     #[error("Shader compilation error: {0}")]
     Compile(String),
     #[error("Shader linking error: {0}")]
     Linking(String),
 }
 
-pub struct Shader {
+pub(crate) struct Shader {
     program: u32,
 }
 
 impl Shader {
-    pub fn load(vertex: &str, fragment: &str) -> Result<Self, ShaderError> {
+    pub(crate) fn load(vertex: &str, fragment: &str) -> Result<Self, ShaderError> {
         let vertex = Self::compile(vertex, gl::VERTEX_SHADER)?;
         let fragment = Self::compile(fragment, gl::FRAGMENT_SHADER)?;
         let program = Self::link(vertex, fragment)?;

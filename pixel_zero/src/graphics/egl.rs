@@ -12,10 +12,10 @@ pub(crate) struct Egl {
 }
 
 impl Egl {
-    pub(crate) fn load(gbm: &mut Gbm) -> anyhow::Result<Self> {
+    pub(crate) fn load(gbm: &mut Gbm) -> Result<Self, egl::Error> {
         let instance = Instance::new(Static);
         let display = unsafe { instance.get_display(gbm.device().as_raw() as *mut _) }
-            .ok_or(anyhow::anyhow!("No EGL Display found"))?;
+            .ok_or(egl::Error::BadDisplay)?;
         let (major, minor) = instance.initialize(display)?;
         log::info!("egl version {major}.{minor}");
         instance.bind_api(egl::OPENGL_ES_API)?;
@@ -37,14 +37,13 @@ impl Egl {
         let mut configs = Vec::with_capacity(8);
         instance.choose_config(display, &config_attributes, &mut configs)?;
 
-        let config = *configs
-            .first()
-            .ok_or(anyhow::anyhow!("No suitable EGL config found",))?;
+        let config = *configs.first().ok_or(egl::Error::BadConfig)?;
 
         let visual_id = instance.get_config_attrib(display, config, egl::NATIVE_VISUAL_ID)?;
         let gbm_format = unsafe { std::mem::transmute::<i32, gbm::Format>(visual_id) };
 
-        gbm.init_surface(gbm_format)?;
+        gbm.init_surface(gbm_format)
+            .map_err(|_| egl::Error::BadSurface)?;
 
         let context_attributes = [
             egl::CONTEXT_MAJOR_VERSION,
