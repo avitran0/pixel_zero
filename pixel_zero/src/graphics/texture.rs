@@ -114,3 +114,11 @@ impl Texture {
         self.texture
     }
 }
+
+impl Drop for Texture {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteTextures(1, &raw const self.texture);
+        }
+    }
+}

@@ -126,6 +126,10 @@ impl Graphics {
 
 impl Drop for Graphics {
     fn drop(&mut self) {
+        unsafe {
+            std::ptr::drop_in_place(&mut self.framebuffer);
+        }
+
         if let Err(e) = self.drm.gpu().destroy_framebuffer(self.drm_fb) {
             log::error!("failed to destroy framebuffer on Graphics drop: {e}");
         }

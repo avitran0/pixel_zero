@@ -35,7 +35,7 @@ impl Drop for TerminalGuard {
         if let Err(e) = tcflush(std::io::stdin(), FlushArg::TCIFLUSH) {
             log::error!("failed to flush stdin: {e}");
         }
-        if let Err(e) = tcsetattr(std::io::stdin(), SetArg::TCSANOW, &self.original) {
+        if let Err(e) = tcsetattr(std::io::stdin(), SetArg::TCSAFLUSH, &self.original) {
             log::error!("failed to reset termios: {e}");
         }
         CREATED.store(false, Ordering::Relaxed);
