@@ -1,5 +1,3 @@
-use std::time::{Duration, Instant};
-
 use glam::{Vec2, uvec2};
 use pixel_zero::{
     graphics::{Graphics, color::Color, sprite::Sprite},
@@ -7,8 +5,6 @@ use pixel_zero::{
 };
 
 use crate::screen::{Screen, game_menu::GameMenu};
-
-const TIME: Duration = Duration::from_secs(5);
 
 pub struct Launcher {
     graphics: Graphics,
@@ -35,7 +31,7 @@ impl Launcher {
         while !self.exit {
             self.input.update();
             if self.input.just_pressed(Button::A) {
-                println!("exiting");
+                log::info!("exiting");
                 self.exit = true;
             }
             if self.input.is_pressed(Button::Left) {

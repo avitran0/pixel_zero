@@ -26,7 +26,7 @@ impl FileLogger {
         let mut path = std::env::current_exe()?;
         path.pop();
         path.push(file_name);
-        let file = File::options().create(true).append(true).open(path)?;
+        let file = File::options().create(true).write(true).open(path)?;
 
         Ok(Self {
             writer: Mutex::new(BufWriter::new(file)),
