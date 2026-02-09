@@ -12,6 +12,30 @@ pub(crate) struct Egl {
 }
 
 impl Egl {
+    const CONFIG_ATTRIBUTES: [i32; 13] = [
+        egl::RED_SIZE,
+        8,
+        egl::GREEN_SIZE,
+        8,
+        egl::BLUE_SIZE,
+        8,
+        egl::ALPHA_SIZE,
+        8,
+        egl::RENDERABLE_TYPE,
+        egl::OPENGL_ES3_BIT,
+        egl::SURFACE_TYPE,
+        egl::WINDOW_BIT,
+        egl::NONE,
+    ];
+
+    const CONTEXT_ATTRIBUTES: [i32; 5] = [
+        egl::CONTEXT_MAJOR_VERSION,
+        3,
+        egl::CONTEXT_MINOR_VERSION,
+        2,
+        egl::NONE,
+    ];
+
     pub(crate) fn load(gbm: &mut Gbm) -> Result<Self, egl::Error> {
         let instance = Instance::new(Static);
         let display = unsafe { instance.get_display(gbm.device().as_raw() as *mut _) }
@@ -20,22 +44,8 @@ impl Egl {
         log::info!("egl version {major}.{minor}");
         instance.bind_api(egl::OPENGL_ES_API)?;
 
-        let config_attributes = [
-            egl::RED_SIZE,
-            8,
-            egl::GREEN_SIZE,
-            8,
-            egl::BLUE_SIZE,
-            8,
-            egl::RENDERABLE_TYPE,
-            egl::OPENGL_ES_BIT,
-            egl::SURFACE_TYPE,
-            egl::WINDOW_BIT,
-            egl::NONE,
-        ];
-
         let mut configs = Vec::with_capacity(8);
-        instance.choose_config(display, &config_attributes, &mut configs)?;
+        instance.choose_config(display, &Self::CONFIG_ATTRIBUTES, &mut configs)?;
 
         let config = *configs.first().ok_or(egl::Error::BadConfig)?;
 
@@ -45,15 +55,7 @@ impl Egl {
         gbm.init_surface(gbm_format)
             .map_err(|_| egl::Error::BadSurface)?;
 
-        let context_attributes = [
-            egl::CONTEXT_MAJOR_VERSION,
-            2,
-            egl::CONTEXT_MINOR_VERSION,
-            0,
-            egl::NONE,
-        ];
-
-        let context = instance.create_context(display, config, None, &context_attributes)?;
+        let context = instance.create_context(display, config, None, &Self::CONTEXT_ATTRIBUTES)?;
         let surface = unsafe {
             instance.create_window_surface(display, config, gbm.surface().as_raw() as *mut _, None)
         }?;
