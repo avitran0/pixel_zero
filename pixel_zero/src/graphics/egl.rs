@@ -109,13 +109,16 @@ fn setup_debug_callback() {
     extern "system" fn debug_callback(
         source: gl::types::GLenum,
         kind: gl::types::GLenum,
-        id: gl::types::GLuint,
+        _id: gl::types::GLuint,
         severity: gl::types::GLenum,
         _length: gl::types::GLsizei,
         message: *const gl::types::GLchar,
         _user_param: *mut c_void,
     ) {
         let message = unsafe { CStr::from_ptr(message) };
+        let Ok(message) = message.to_str() else {
+            return;
+        };
 
         let source = match source {
             gl::DEBUG_SOURCE_API => "API",
@@ -138,11 +141,11 @@ fn setup_debug_callback() {
             _ => "Unknown",
         };
 
-        let severity = match severity {
-            gl::DEBUG_SEVERITY_HIGH => "HIGH",
-            gl::DEBUG_SEVERITY_MEDIUM => "MEDIUM",
-            _ => return,
-        };
+        match severity {
+            gl::DEBUG_SEVERITY_HIGH => log::error!("[{source}/{kind}] {message}"),
+            gl::DEBUG_SEVERITY_MEDIUM => log::warn!("[{source}/{kind}] {message}"),
+            _ => {}
+        }
     }
 
     unsafe {
