@@ -24,33 +24,15 @@ impl Launcher {
     }
 
     pub fn run(&mut self) {
-        let sprite = Sprite::load_binary(include_bytes!("redstone.png")).unwrap();
-        let mut position = Vec2::new(0.0, 0.0);
-        const SPEED: f32 = 0.1;
-
         while !self.exit {
             self.input.update();
             if self.input.just_pressed(Button::A) {
                 log::info!("exiting");
                 self.exit = true;
             }
-            if self.input.is_pressed(Button::Left) {
-                position.x -= SPEED;
-            }
-            if self.input.is_pressed(Button::Right) {
-                position.x += SPEED;
-            }
-            if self.input.is_pressed(Button::Up) {
-                position.y -= SPEED;
-            }
-            if self.input.is_pressed(Button::Down) {
-                position.y += SPEED;
-            }
             self.screen.update(&self.input);
             self.graphics.clear(Color::rgb(100, 150, 240));
 
-            self.graphics
-                .draw_sprite(&sprite, ivec2(position.x as i32, position.y as i32));
             self.screen.render(&self.graphics);
 
             self.graphics.present().unwrap();
