@@ -130,8 +130,12 @@ impl Framebuffer {
         self.sprite_shader
             .set_uniform("u_position", Uniform::Vec2(position.as_vec2()));
         self.sprite_shader
-            .set_uniform("u_size", Uniform::Vec2(sprite.texture.size().as_vec2()));
-        sprite.texture.bind();
+            .set_uniform("u_size", Uniform::Vec2(sprite.texture().size().as_vec2()));
+        self.sprite_shader
+            .set_uniform("u_texcoord_min", Uniform::Vec2(sprite.region().min()));
+        self.sprite_shader
+            .set_uniform("u_texcoord_max", Uniform::Vec2(sprite.region().max()));
+        sprite.texture().bind();
         self.quad.bind_vao();
 
         self.quad.draw();
