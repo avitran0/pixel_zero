@@ -38,5 +38,6 @@ impl Drop for TerminalGuard {
         if tcsetattr(std::io::stdin(), SetArg::TCSANOW, &self.original).is_err() {
             log::error!("failed to reset termios");
         }
+        CREATED.store(false, Ordering::Relaxed);
     }
 }
