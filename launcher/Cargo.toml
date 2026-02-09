@@ -3,6 +3,9 @@ name = "launcher"
 version = "0.1.0"
 edition = "2024"
 
+[lints]
+workspace = true
+
 [dependencies]
 pixel_zero = { workspace = true }
 anyhow = { workspace = true }

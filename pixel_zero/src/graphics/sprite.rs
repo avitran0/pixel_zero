@@ -7,7 +7,7 @@ pub struct Sprite {
 }
 
 impl Sprite {
-    pub fn load(path: impl AsRef<Path>) -> anyhow::Result<Self> {
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, TextureError> {
         let texture = Texture::load(path)?;
         Ok(Self { texture })
     }

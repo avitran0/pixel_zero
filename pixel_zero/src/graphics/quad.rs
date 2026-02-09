@@ -12,14 +12,14 @@ impl Quad {
     pub fn new() -> Self {
         let mut vao = 0;
         let mut vbo = 0;
-        
+
         unsafe {
             gl::GenVertexArrays(1, &raw mut vao);
             gl::GenBuffers(1, &raw mut vbo);
             gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
             gl::BufferData(
                 gl::ARRAY_BUFFER,
-                size_of_val(&Self::VERTEX_DATA) as isize,
+                size_of_val(&Self::VERTEX_DATA).cast_signed(),
                 Self::VERTEX_DATA.as_ref().as_ptr().cast(),
                 gl::STATIC_DRAW,
             );

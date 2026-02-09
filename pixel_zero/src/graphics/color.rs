@@ -40,7 +40,7 @@ impl Color {
         self.f32().vec3()
     }
 
-    pub fn f32(&self) -> ColorF32 {
+    pub(crate) fn f32(self) -> ColorF32 {
         ColorF32 {
             r: f32::from(self.r) / 255.0,
             g: f32::from(self.g) / 255.0,
@@ -58,17 +58,6 @@ pub(crate) struct ColorF32 {
 }
 
 impl ColorF32 {
-    pub const BLACK: Self = Self::rgb(0.0, 0.0, 0.0);
-    pub const WHITE: Self = Self::rgb(1.0, 1.0, 1.0);
-
-    pub const fn rgb(r: f32, g: f32, b: f32) -> Self {
-        Self { r, g, b, a: 1.0 }
-    }
-
-    pub const fn rgba(r: f32, g: f32, b: f32, a: f32) -> Self {
-        Self { r, g, b, a }
-    }
-
     pub fn r(&self) -> f32 {
         self.r
     }

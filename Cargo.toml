@@ -2,6 +2,9 @@
 members = ["pixel_zero", "launcher"]
 resolver = "3"
 
+[workspace.lints.clippy]
+pedantic = "allow"
+
 [workspace.dependencies]
 pixel_zero = { path = "pixel_zero" }
 anyhow = "1.0"

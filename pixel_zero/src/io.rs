@@ -1,5 +1,6 @@
 use std::io::Result;
 
+#[allow(unused)]
 pub trait ReadBytes: std::io::Read {
     #[inline]
     fn read_u8(&mut self) -> Result<u8> {

@@ -5,12 +5,7 @@ use ::gbm::BufferObject;
 use glam::UVec2;
 
 use crate::graphics::{
-    color::{Color, ColorF32},
-    drm::Drm,
-    egl::Egl,
-    framebuffer::Framebuffer,
-    gbm::Gbm,
-    sprite::Sprite,
+    color::Color, drm::Drm, egl::Egl, framebuffer::Framebuffer, gbm::Gbm, sprite::Sprite,
 };
 
 pub mod color;

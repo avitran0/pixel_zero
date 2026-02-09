@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use glam::uvec2;
+use glam::{Vec2, uvec2};
 use pixel_zero::{
     graphics::{Graphics, color::Color, sprite::Sprite},
     input::{Button, Input},
@@ -31,17 +31,34 @@ impl Launcher {
 
     pub fn run(&mut self) {
         let sprite = Sprite::load_binary(include_bytes!("redstone.png")).unwrap();
+        let mut position = Vec2::new(0.0, 0.0);
+        const SPEED: f32 = 0.1;
+
         while !self.exit && self.start.elapsed() < TIME {
             self.input.update();
             if self.input.just_pressed(Button::A) {
                 println!("exiting");
                 self.exit = true;
             }
+            if self.input.is_pressed(Button::Left) {
+                position.x -= SPEED;
+            }
+            if self.input.is_pressed(Button::Right) {
+                position.x += SPEED;
+            }
+            if self.input.is_pressed(Button::Up) {
+                position.y -= SPEED;
+            }
+            if self.input.is_pressed(Button::Down) {
+                position.y += SPEED;
+            }
             self.screen.update(&self.input);
             self.graphics.clear(Color::rgb(100, 150, 240));
-            self.graphics.draw_sprite(&sprite, uvec2(0, 0));
-            self.graphics.draw_sprite(&sprite, uvec2(50, 50));
+
+            self.graphics
+                .draw_sprite(&sprite, uvec2(position.x as u32, position.y as u32));
             self.screen.render(&self.graphics);
+
             self.graphics.present().unwrap();
             self.graphics.check_error();
         }
