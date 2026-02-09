@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use drm::control::{self, framebuffer as drmfb, Device as _, PageFlipFlags};
-use gbm::BufferObject;
+use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer as drmfb};
+use ::gbm::BufferObject;
 use glam::UVec2;
 
 use crate::graphics::{
