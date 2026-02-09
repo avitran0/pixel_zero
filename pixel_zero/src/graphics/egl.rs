@@ -1,3 +1,5 @@
+use std::ffi::{CStr, c_void};
+
 use gbm::AsRaw as _;
 use khronos_egl::{self as egl, Config, Context, Display, Instance, Static, Surface};
 
@@ -65,6 +67,20 @@ impl Egl {
 
         unsafe { gl::Viewport(0, 0, gbm.size().x.cast_signed(), gbm.size().y.cast_signed()) };
 
+        let extensions = unsafe { gl::GetString(gl::EXTENSIONS) };
+        let extensions = unsafe { CStr::from_ptr(extensions.cast()) };
+        let extensions: Vec<_> = extensions
+            .to_str()
+            .unwrap()
+            .split_ascii_whitespace()
+            .collect();
+
+        let has_debug = extensions.contains(&"KHR_debug") || extensions.contains(&"GL_KHR_debug");
+        if has_debug {
+            log::info!("debug extension found");
+            setup_debug_callback();
+        }
+
         instance.swap_buffers(display, surface)?;
 
         Ok(Self {
@@ -86,5 +102,61 @@ impl Egl {
 
     pub(crate) fn surface(&self) -> Surface {
         self.surface
+    }
+}
+
+fn setup_debug_callback() {
+    extern "system" fn debug_callback(
+        source: gl::types::GLenum,
+        kind: gl::types::GLenum,
+        id: gl::types::GLuint,
+        severity: gl::types::GLenum,
+        _length: gl::types::GLsizei,
+        message: *const gl::types::GLchar,
+        _user_param: *mut c_void,
+    ) {
+        let message = unsafe { CStr::from_ptr(message) };
+
+        let source = match source {
+            gl::DEBUG_SOURCE_API => "API",
+            gl::DEBUG_SOURCE_APPLICATION => "Application",
+            gl::DEBUG_SOURCE_SHADER_COMPILER => "Shader Compiler",
+            gl::DEBUG_SOURCE_THIRD_PARTY => "Third Party",
+            gl::DEBUG_SOURCE_WINDOW_SYSTEM => "Window System",
+            gl::DEBUG_SOURCE_OTHER => "Other",
+            _ => "Unknown",
+        };
+
+        let kind = match kind {
+            gl::DEBUG_TYPE_ERROR => "Error",
+            gl::DEBUG_TYPE_DEPRECATED_BEHAVIOR => "Deprecated Behavior",
+            gl::DEBUG_TYPE_UNDEFINED_BEHAVIOR => "Undefined Behavior",
+            gl::DEBUG_TYPE_PORTABILITY => "Portability",
+            gl::DEBUG_TYPE_PERFORMANCE => "Performance",
+            gl::DEBUG_TYPE_MARKER => "Marker",
+            gl::DEBUG_TYPE_OTHER => "Other",
+            _ => "Unknown",
+        };
+
+        let severity = match severity {
+            gl::DEBUG_SEVERITY_HIGH => "HIGH",
+            gl::DEBUG_SEVERITY_MEDIUM => "MEDIUM",
+            _ => return,
+        };
+    }
+
+    unsafe {
+        gl::Enable(gl::DEBUG_OUTPUT);
+
+        gl::DebugMessageCallback(Some(debug_callback), std::ptr::null());
+
+        gl::DebugMessageControl(
+            gl::DONT_CARE,
+            gl::DONT_CARE,
+            gl::DEBUG_SEVERITY_NOTIFICATION,
+            0,
+            std::ptr::null(),
+            gl::FALSE,
+        );
     }
 }
