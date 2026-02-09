@@ -1,6 +1,5 @@
-use glam::{Vec2, ivec2};
 use pixel_zero::{
-    graphics::{Graphics, color::Color, sprite::Sprite},
+    graphics::{Graphics, color::Color},
     input::{Button, Input},
 };
 

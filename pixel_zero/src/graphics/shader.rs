@@ -4,7 +4,7 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub(crate) enum ShaderError {
+pub enum ShaderError {
     #[error("Shader compilation error: {0}")]
     Compile(String),
     #[error("Shader linking error: {0}")]
@@ -184,6 +184,7 @@ impl Drop for Shader {
     }
 }
 
+#[allow(unused)]
 pub(crate) enum Uniform {
     Int(i32),
     Float(f32),
@@ -210,6 +211,7 @@ impl Uniform {
     }
 }
 
+#[allow(unused)]
 pub(crate) enum VertexAttribute {
     Float,
     Vec2,
