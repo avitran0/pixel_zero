@@ -1,6 +1,6 @@
 use glam::{Vec2, ivec2};
 use pixel_zero::{
-    graphics::{Graphics, sprite::Sprite},
+    graphics::{Graphics, font::Font, sprite::Sprite},
     input::{Button, Input},
 };
 
@@ -9,6 +9,7 @@ use crate::screen::Screen;
 pub struct GameMenu {
     sprite: Sprite,
     position: Vec2,
+    font: Font,
 }
 
 impl GameMenu {
@@ -16,6 +17,7 @@ impl GameMenu {
         Self {
             sprite: Sprite::load_binary(include_bytes!("redstone.png")).unwrap(),
             position: Vec2::ZERO,
+            font: Font::load("cozette.psf").unwrap(),
         }
     }
 
@@ -43,5 +45,6 @@ impl Screen for GameMenu {
             &self.sprite,
             ivec2(self.position.x as i32, self.position.y as i32),
         );
+        graphics.draw_text(&self.font, "test text", ivec2(50, 50));
     }
 }

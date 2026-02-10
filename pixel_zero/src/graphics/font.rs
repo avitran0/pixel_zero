@@ -90,6 +90,8 @@ impl Font {
 
         let texture = Texture::from_rgba(&atlas_data, atlas_size);
 
+        log::info!("loaded font with {} glyphs", glyph_regions.len());
+
         Ok(Self {
             texture,
             glyph_size: uvec2(header.width, header.height),

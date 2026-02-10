@@ -155,7 +155,7 @@ impl Framebuffer {
         font.texture().bind();
         self.quad.bind_vao();
 
-        let advance = 0;
+        let mut advance = 0;
         for char in text.chars() {
             let glyph = font.glyph(char).unwrap_or(font.default_glyph());
 
@@ -169,6 +169,8 @@ impl Framebuffer {
                 .set_uniform("u_texcoord_max", Uniform::Vec2(glyph.max()));
 
             self.quad.draw();
+
+            advance += font.glyph_size().x.cast_signed();
         }
 
         Texture::unbind();
