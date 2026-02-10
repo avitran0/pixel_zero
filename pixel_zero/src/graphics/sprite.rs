@@ -17,7 +17,7 @@ impl Sprite {
     }
 
     pub fn load_binary(bytes: &[u8]) -> Result<Self, TextureError> {
-        let texture = Texture::load_binary(bytes)?;
+        let texture = Texture::load_binary_png(bytes)?;
         let region = TextureRegion::full();
         Ok(Self { texture, region })
     }
@@ -37,7 +37,7 @@ pub(crate) struct TextureRegion {
 }
 
 impl TextureRegion {
-    fn from_pixels(position: UVec2, size: UVec2, texture_size: UVec2) -> Self {
+    pub(crate) fn from_pixels(position: UVec2, size: UVec2, texture_size: UVec2) -> Self {
         let position = position.as_vec2();
         let size = size.as_vec2();
         let texture_size = texture_size.as_vec2();

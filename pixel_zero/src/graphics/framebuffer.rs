@@ -1,9 +1,10 @@
-use glam::{IVec2, Mat4, UVec2, uvec2};
+use glam::{IVec2, Mat4, UVec2, ivec2, uvec2};
 
 use crate::{
     HEIGHT, WIDTH,
     graphics::{
         color::Color,
+        font::Font,
         quad::Quad,
         shader::{Shader, ShaderError, Uniform, VertexAttribute},
         sprite::Sprite,
@@ -139,6 +140,36 @@ impl Framebuffer {
         self.quad.bind_vao();
 
         self.quad.draw();
+
+        Texture::unbind();
+        Quad::unbind_vao();
+        Shader::unbind();
+        self.unbind();
+    }
+
+    pub(crate) fn draw_text(&self, font: &Font, text: &str, position: IVec2) {
+        self.bind();
+        self.sprite_shader.bind();
+        self.sprite_shader
+            .set_uniform("u_size", Uniform::Vec2(font.glyph_size().as_vec2()));
+        font.texture().bind();
+        self.quad.bind_vao();
+
+        let advance = 0;
+        for char in text.chars() {
+            let glyph = font.glyph(char).unwrap_or(font.default_glyph());
+
+            let position = position + ivec2(advance, 0);
+            self.sprite_shader
+                .set_uniform("u_position", Uniform::Vec2(position.as_vec2()));
+
+            self.sprite_shader
+                .set_uniform("u_texcoord_min", Uniform::Vec2(glyph.min()));
+            self.sprite_shader
+                .set_uniform("u_texcoord_max", Uniform::Vec2(glyph.max()));
+
+            self.quad.draw();
+        }
 
         Texture::unbind();
         Quad::unbind_vao();

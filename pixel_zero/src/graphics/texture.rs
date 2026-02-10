@@ -1,7 +1,7 @@
 use std::{io::Cursor, path::Path};
 
 use glam::{UVec2, uvec2};
-use image::{ImageReader, RgbaImage};
+use image::ImageReader;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -23,28 +23,33 @@ impl Texture {
         let rgba_image = image.to_rgba8();
         let size = uvec2(image.width(), image.height());
 
-        let texture = Self::crate_texture(size, Some(rgba_image));
+        let texture = Self::create_texture(size, Some(rgba_image.as_raw()));
 
         Ok(Self { texture, size })
     }
 
-    pub fn load_binary(bytes: &[u8]) -> Result<Self, TextureError> {
-        let cursor = Cursor::new(bytes);
+    pub fn load_binary_png(data: &[u8]) -> Result<Self, TextureError> {
+        let cursor = Cursor::new(data);
         let image = ImageReader::new(cursor).with_guessed_format()?.decode()?;
         let rgba_image = image.to_rgba8();
         let size = uvec2(image.width(), image.height());
 
-        let texture = Self::crate_texture(size, Some(rgba_image));
+        let texture = Self::create_texture(size, Some(rgba_image.as_raw()));
 
         Ok(Self { texture, size })
     }
 
-    pub fn empty(size: UVec2) -> Self {
-        let texture = Self::crate_texture(size, None);
+    pub fn from_rgba(data: &[u8], size: UVec2) -> Self {
+        let texture = Self::create_texture(size, Some(data));
         Self { texture, size }
     }
 
-    fn crate_texture(size: UVec2, data: Option<RgbaImage>) -> u32 {
+    pub fn empty(size: UVec2) -> Self {
+        let texture = Self::create_texture(size, None);
+        Self { texture, size }
+    }
+
+    fn create_texture(size: UVec2, data: Option<&[u8]>) -> u32 {
         let mut texture = 0;
         unsafe {
             gl::GenTextures(1, &raw mut texture);
@@ -72,7 +77,7 @@ impl Texture {
             );
 
             let pixels = if let Some(data) = data {
-                data.as_raw().as_ptr().cast()
+                data.as_ptr().cast()
             } else {
                 std::ptr::null()
             };

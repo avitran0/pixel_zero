@@ -9,6 +9,7 @@ use crate::graphics::{
     color::Color,
     drm::{Drm, DrmError},
     egl::Egl,
+    font::Font,
     framebuffer::Framebuffer,
     gbm::Gbm,
     shader::ShaderError,
@@ -94,6 +95,10 @@ impl Graphics {
 
     pub fn draw_sprite(&self, sprite: &Sprite, position: IVec2) {
         self.framebuffer.draw_sprite(sprite, position);
+    }
+
+    pub fn draw_text(&self, font: &Font, text: &str, position: IVec2) {
+        self.framebuffer.draw_text(font, text, position);
     }
 
     pub fn present(&mut self) -> Result<(), GraphicsError> {
