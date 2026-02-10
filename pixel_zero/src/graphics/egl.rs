@@ -32,9 +32,9 @@ impl Egl {
 
     const CONTEXT_ATTRIBUTES: [i32; 5] = [
         egl::CONTEXT_MAJOR_VERSION,
-        3,
-        egl::CONTEXT_MINOR_VERSION,
         2,
+        egl::CONTEXT_MINOR_VERSION,
+        0,
         egl::NONE,
     ];
 
