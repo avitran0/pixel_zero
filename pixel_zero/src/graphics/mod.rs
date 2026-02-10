@@ -6,7 +6,13 @@ use glam::IVec2;
 use thiserror::Error;
 
 use crate::graphics::{
-    color::Color, drm::{Drm, DrmError}, egl::Egl, framebuffer::Framebuffer, gbm::Gbm, shader::ShaderError, sprite::Sprite
+    color::Color,
+    drm::{Drm, DrmError},
+    egl::Egl,
+    framebuffer::Framebuffer,
+    gbm::Gbm,
+    shader::ShaderError,
+    sprite::Sprite,
 };
 
 pub mod color;

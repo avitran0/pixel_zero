@@ -1,5 +1,7 @@
 use std::io::Result;
 
+use bytemuck::{AnyBitPattern, NoUninit};
+
 #[allow(unused)]
 pub trait ReadBytes: std::io::Read {
     #[inline]
@@ -91,6 +93,14 @@ pub trait ReadBytes: std::io::Read {
         let mut buf = vec![0; count];
         self.read_exact(&mut buf)?;
         Ok(buf)
+    }
+
+    #[inline]
+    fn read_value<T: NoUninit + AnyBitPattern + Default>(&mut self) -> Result<T> {
+        let mut value = T::default();
+        let mut buf = bytemuck::bytes_of_mut(&mut value);
+        self.read_exact(buf)?;
+        Ok(value)
     }
 }
 
