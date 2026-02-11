@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fs::File,
-    io::{BufReader, Read},
+    io::{BufReader, Cursor, Read},
     path::Path,
 };
 
@@ -26,6 +26,7 @@ pub enum FontError {
     InvalidUnicode,
 }
 
+/// PSF2 Font loader and drawing
 pub struct Font {
     texture: Texture,
     glyph_size: UVec2,
@@ -37,7 +38,15 @@ impl Font {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, FontError> {
         let file = File::open(path)?;
         let mut reader = BufReader::new(file);
+        Self::load_read(&mut reader)
+    }
 
+    pub fn load_bin(data: &[u8]) -> Result<Self, FontError> {
+        let mut cursor = Cursor::new(data);
+        Self::load_read(&mut cursor)
+    }
+
+    pub fn load_read(reader: &mut impl Read) -> Result<Self, FontError> {
         let header: Header = reader.read_value()?;
         if header.magic != Header::MAGIC {
             return Err(FontError::InvalidMagic {
@@ -89,7 +98,7 @@ impl Font {
 
         let char_map = if has_unicode {
             Some(Self::parse_unicode_table(
-                &mut reader,
+                reader,
                 header.num_glyphs as usize,
             )?)
         } else {

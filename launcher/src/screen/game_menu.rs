@@ -17,7 +17,7 @@ impl GameMenu {
         Self {
             sprite: Sprite::load_binary(include_bytes!("redstone.png")).unwrap(),
             position: Vec2::ZERO,
-            font: Font::load("cozette.psf").unwrap(),
+            font: Font::load_bin(include_bytes!("cozette.psf")).unwrap(),
         }
     }
 
