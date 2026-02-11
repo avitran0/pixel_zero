@@ -1,6 +1,6 @@
 use pixel_zero::{Font, Graphics, meta::embed_metadata, input::Input, ivec2};
 
-embed_metadata!(name: "cock", version: 1);
+embed_metadata!(name: "Game", version: 1);
 
 fn main() {
     let mut graphics = Graphics::load().unwrap();
