@@ -1,6 +1,9 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::{
+    sync::atomic::{AtomicBool, Ordering},
+    time::{Duration, Instant},
+};
 
-use ::drm::control::{self, Device as _, PageFlipFlags, framebuffer as drmfb};
+use ::drm::control::{Device as _, PageFlipFlags, framebuffer as drmfb};
 use ::gbm::{BufferObject, FrontBufferError};
 use glam::IVec2;
 use thiserror::Error;
@@ -53,6 +56,7 @@ pub struct Graphics {
     buffer_object: BufferObject<()>,
 
     framebuffer: Framebuffer,
+    frame_start: Instant,
 }
 
 static LOADED: AtomicBool = AtomicBool::new(false);
@@ -78,6 +82,7 @@ impl Graphics {
         )?;
 
         let framebuffer = Framebuffer::load(drm.size())?;
+        let frame_start = Instant::now();
 
         Ok(Self {
             drm,
@@ -86,6 +91,7 @@ impl Graphics {
             drm_fb,
             buffer_object,
             framebuffer,
+            frame_start,
         })
     }
 
@@ -101,6 +107,7 @@ impl Graphics {
         self.framebuffer.draw_text(font, text, position);
     }
 
+    const FRAME_DURATION: Duration = Duration::from_micros(16667);
     pub fn present(&mut self) -> Result<(), GraphicsError> {
         self.framebuffer.present();
 
@@ -115,17 +122,15 @@ impl Graphics {
         self.drm
             .gpu()
             .page_flip(self.drm.crtc().handle(), drm_fb, PageFlipFlags::EVENT, None)?;
-        let events = self.drm.gpu().receive_events()?;
-        for event in events {
-            if let control::Event::PageFlip(_event) = event {
-                // todo
-            }
-        }
+        let _events = self.drm.gpu().receive_events()?;
 
         self.drm.gpu().destroy_framebuffer(self.drm_fb)?;
 
         self.buffer_object = buffer_object;
         self.drm_fb = drm_fb;
+
+        std::thread::sleep(Self::FRAME_DURATION - self.frame_start.elapsed());
+        self.frame_start = Instant::now();
 
         Ok(())
     }
