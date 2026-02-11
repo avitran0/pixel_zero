@@ -63,11 +63,16 @@ impl Font {
             let x = (glyph % glyphs_per_row) * header.width;
             let y = (glyph / glyphs_per_row) * header.height;
 
+            let bpg = header.bytes_per_glyph as usize;
+            let glyph_offset = glyph as usize * bpg;
+            let glyph_slice = &glyph_data[glyph_offset..glyph_offset + bpg];
+
             Self::blit_glyph_to_atlas(
-                &glyph_data,
+                glyph_slice,
                 &mut atlas_data,
                 uvec2(header.width, header.height),
                 uvec2(x, y),
+                atlas_size.x,
             );
 
             let region = TextureRegion::from_pixels(
@@ -116,7 +121,13 @@ impl Font {
         (atlas_size, glyphs_per_row)
     }
 
-    fn blit_glyph_to_atlas(glyph_data: &[u8], atlas_data: &mut [u8], size: UVec2, position: UVec2) {
+    fn blit_glyph_to_atlas(
+        glyph_data: &[u8],
+        atlas_data: &mut [u8],
+        size: UVec2,
+        position: UVec2,
+        atlas_width: u32,
+    ) {
         let bytes_per_row = size.x.div_ceil(8);
 
         for x in 0..size.x {
@@ -125,7 +136,7 @@ impl Font {
                 let bit_index = 7 - (x % 8);
                 let bit = ((glyph_data[byte_index] >> bit_index) & 1) != 0;
 
-                let atlas_index = ((position.y + y) * size.x + (position.x + x)) * 4;
+                let atlas_index = ((position.y + y) * atlas_width + (position.x + x)) * 4;
                 let atlas_index = atlas_index as usize;
 
                 // only set alpha, rest is 0xFF already
