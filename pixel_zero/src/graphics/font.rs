@@ -56,7 +56,7 @@ impl Font {
 
         let (atlas_size, glyphs_per_row) = Self::calculate_atlas_dimensions(&header);
 
-        let mut atlas_data = vec![0xFF; atlas_size.x as usize * atlas_size.y as usize];
+        let mut atlas_data = vec![0xFF; atlas_size.x as usize * atlas_size.y as usize * 4];
         let mut glyph_regions = Vec::with_capacity(header.num_glyphs as usize);
 
         for glyph in 0..header.num_glyphs {
