@@ -15,9 +15,11 @@ codegen-units = 1
 lto = "fat"
 
 [dependencies]
+elf_macros = { path = "elf_macros" }
 glam = { workspace = true }
 log = { workspace = true }
 thiserror = { workspace = true }
+bytemuck = { workspace = true }
 libc = "0.2"
 drm = "0.14"
 gbm = { version = "0.18", default-features = false, features = [
@@ -29,4 +31,4 @@ gl = "0.14"
 nix = { version = "0.31", features = ["term"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 parking_lot = "0.12"
-bytemuck = "1.25"
+goblin = "0.10"

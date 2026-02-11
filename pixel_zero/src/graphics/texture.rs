@@ -39,7 +39,7 @@ impl Texture {
         Ok(Self { texture, size })
     }
 
-    pub fn from_rgba(data: &[u8], size: UVec2) -> Self {
+    pub fn load_rgba(data: &[u8], size: UVec2) -> Self {
         let texture = Self::create_texture(size, Some(data));
         Self { texture, size }
     }

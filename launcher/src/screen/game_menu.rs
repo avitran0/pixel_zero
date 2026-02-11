@@ -1,50 +1,60 @@
-use glam::{Vec2, ivec2};
+use std::fs::File;
+
+use glam::ivec2;
 use pixel_zero::{
-    graphics::{Graphics, font::Font, sprite::Sprite},
-    input::{Button, Input},
+    graphics::{Graphics, font::Font},
+    input::Input,
+    io::ReadBytes as _,
+    meta::{GameInfo, read_metadata},
 };
 
 use crate::screen::Screen;
 
 pub struct GameMenu {
-    sprite: Sprite,
-    position: Vec2,
+    games: Vec<GameInfo>,
     font: Font,
 }
 
 impl GameMenu {
     pub fn new() -> Self {
+        let exe_dir = std::env::current_exe().unwrap();
+        let dir = exe_dir.parent().unwrap();
+        let games: Vec<GameInfo> = std::fs::read_dir(dir)
+            .unwrap()
+            .filter_map(|entry| {
+                let entry = entry.ok()?;
+                let mut file = File::open(entry.path()).ok()?;
+                let magic = file.read_u32().ok()?;
+                if magic == 0x7F454C46 || magic == 0x464C457F {
+                    Some(entry.path())
+                } else {
+                    None
+                }
+            })
+            .filter_map(read_metadata)
+            .collect();
+
+        log::info!(
+            "found {} game{}",
+            games.len(),
+            if games.len() == 1 { "s" } else { "" }
+        );
+
         Self {
-            sprite: Sprite::load_binary(include_bytes!("redstone.png")).unwrap(),
-            position: Vec2::ZERO,
+            games,
             font: Font::load_bin(include_bytes!("cozette.psf")).unwrap(),
         }
     }
-
-    const SPEED: f32 = 0.1;
 }
 
 impl Screen for GameMenu {
-    fn update(&mut self, input: &Input) {
-        if input.is_pressed(Button::Left) {
-            self.position.x -= Self::SPEED;
-        }
-        if input.is_pressed(Button::Right) {
-            self.position.x += Self::SPEED;
-        }
-        if input.is_pressed(Button::Up) {
-            self.position.y -= Self::SPEED;
-        }
-        if input.is_pressed(Button::Down) {
-            self.position.y += Self::SPEED;
-        }
-    }
+    fn update(&mut self, input: &Input) {}
 
     fn render(&self, graphics: &Graphics) {
-        graphics.draw_sprite(
-            &self.sprite,
-            ivec2(self.position.x as i32, self.position.y as i32),
-        );
-        graphics.draw_text(&self.font, "test text", ivec2(50, 50));
+        let mut offset = 0;
+        for game in &self.games {
+            graphics.draw_text(&self.font, &game.name, ivec2(0, offset));
+            offset += self.font.glyph_size().y.cast_signed();
+        }
     }
 }

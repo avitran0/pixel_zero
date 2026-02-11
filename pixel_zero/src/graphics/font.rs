@@ -11,7 +11,7 @@ use thiserror::Error;
 
 use crate::{
     graphics::{sprite::TextureRegion, texture::Texture},
-    io::ReadBytes,
+    io::ReadBytes as _,
 };
 
 #[derive(Debug, Error)]
@@ -115,7 +115,7 @@ impl Font {
             space.advance = header.width / 2;
         }
 
-        let texture = Texture::from_rgba(&atlas_data, atlas_size);
+        let texture = Texture::load_rgba(&atlas_data, atlas_size);
 
         log::info!("loaded font with {} glyphs", glyphs.len());
 
@@ -206,7 +206,7 @@ impl Font {
         &self.texture
     }
 
-    pub(crate) fn glyph_size(&self) -> UVec2 {
+    pub fn glyph_size(&self) -> UVec2 {
         self.glyph_size
     }
 
