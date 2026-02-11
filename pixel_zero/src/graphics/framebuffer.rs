@@ -164,13 +164,13 @@ impl Framebuffer {
                 .set_uniform("u_position", Uniform::Vec2(position.as_vec2()));
 
             self.sprite_shader
-                .set_uniform("u_texcoord_min", Uniform::Vec2(glyph.min()));
+                .set_uniform("u_texcoord_min", Uniform::Vec2(glyph.region().min()));
             self.sprite_shader
-                .set_uniform("u_texcoord_max", Uniform::Vec2(glyph.max()));
+                .set_uniform("u_texcoord_max", Uniform::Vec2(glyph.region().max()));
 
             self.quad.draw();
 
-            advance += font.glyph_size().x.cast_signed();
+            advance += glyph.advance().cast_signed();
         }
 
         Texture::unbind();

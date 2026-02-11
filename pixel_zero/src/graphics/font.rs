@@ -29,7 +29,7 @@ pub enum FontError {
 pub struct Font {
     texture: Texture,
     glyph_size: UVec2,
-    glyph_regions: Vec<TextureRegion>,
+    glyphs: Vec<Glyph>,
     char_map: Option<HashMap<char, usize>>,
 }
 
@@ -57,7 +57,7 @@ impl Font {
         let (atlas_size, glyphs_per_row) = Self::calculate_atlas_dimensions(&header);
 
         let mut atlas_data = vec![0xFF; atlas_size.x as usize * atlas_size.y as usize * 4];
-        let mut glyph_regions = Vec::with_capacity(header.num_glyphs as usize);
+        let mut glyphs = Vec::with_capacity(header.num_glyphs as usize);
 
         for glyph in 0..header.num_glyphs {
             let x = (glyph % glyphs_per_row) * header.width;
@@ -67,7 +67,7 @@ impl Font {
             let glyph_offset = glyph as usize * bpg;
             let glyph_slice = &glyph_data[glyph_offset..glyph_offset + bpg];
 
-            Self::blit_glyph_to_atlas(
+            let width = Self::blit_glyph_to_atlas(
                 glyph_slice,
                 &mut atlas_data,
                 uvec2(header.width, header.height),
@@ -81,7 +81,10 @@ impl Font {
                 atlas_size,
             );
 
-            glyph_regions.push(region);
+            glyphs.push(Glyph {
+                region,
+                advance: width + 1,
+            });
         }
 
         let char_map = if has_unicode {
@@ -93,14 +96,24 @@ impl Font {
             None
         };
 
+        let space_index = if let Some(char_map) = &char_map {
+            char_map.get(&' ').cloned().unwrap_or(' ' as usize)
+        } else {
+            ' ' as usize
+        };
+
+        if let Some(space) = glyphs.get_mut(space_index) {
+            space.advance = header.width / 2;
+        }
+
         let texture = Texture::from_rgba(&atlas_data, atlas_size);
 
-        log::info!("loaded font with {} glyphs", glyph_regions.len());
+        log::info!("loaded font with {} glyphs", glyphs.len());
 
         Ok(Self {
             texture,
             glyph_size: uvec2(header.width, header.height),
-            glyph_regions,
+            glyphs,
             char_map,
         })
     }
@@ -127,14 +140,20 @@ impl Font {
         size: UVec2,
         position: UVec2,
         atlas_width: u32,
-    ) {
+    ) -> u32 {
         let bytes_per_row = size.x.div_ceil(8);
+        let mut max_width = 0;
 
-        for x in 0..size.x {
-            for y in 0..size.y {
+        for y in 0..size.y {
+            // calculate maximum line
+
+            for x in 0..size.x {
                 let byte_index = (y * bytes_per_row + x / 8) as usize;
                 let bit_index = 7 - (x % 8);
                 let bit = ((glyph_data[byte_index] >> bit_index) & 1) != 0;
+                if bit && x > max_width {
+                    max_width = x;
+                }
 
                 let atlas_index = ((position.y + y) * atlas_width + (position.x + x)) * 4;
                 let atlas_index = atlas_index as usize;
@@ -143,6 +162,8 @@ impl Font {
                 atlas_data[atlas_index + 3] = if bit { 0xFF } else { 0x00 };
             }
         }
+
+        max_width
     }
 
     fn parse_unicode_table(
@@ -180,7 +201,7 @@ impl Font {
         self.glyph_size
     }
 
-    pub(crate) fn glyph(&self, c: char) -> Option<&TextureRegion> {
+    pub(crate) fn glyph(&self, c: char) -> Option<&Glyph> {
         let index = if let Some(char_map) = &self.char_map {
             let index = char_map.get(&c)?;
             *index
@@ -188,11 +209,26 @@ impl Font {
             c as usize
         };
 
-        self.glyph_regions.get(index)
+        self.glyphs.get(index)
     }
 
-    pub(crate) fn default_glyph(&self) -> &TextureRegion {
-        &self.glyph_regions[0]
+    pub(crate) fn default_glyph(&self) -> &Glyph {
+        &self.glyphs[0]
+    }
+}
+
+pub(crate) struct Glyph {
+    region: TextureRegion,
+    advance: u32,
+}
+
+impl Glyph {
+    pub(crate) fn region(&self) -> &TextureRegion {
+        &self.region
+    }
+
+    pub(crate) fn advance(&self) -> u32 {
+        self.advance
     }
 }
 
