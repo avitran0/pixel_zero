@@ -129,7 +129,7 @@ impl Graphics {
         self.buffer_object = buffer_object;
         self.drm_fb = drm_fb;
 
-        std::thread::sleep(Self::FRAME_DURATION - self.frame_start.elapsed());
+        std::thread::sleep(Self::FRAME_DURATION.saturating_sub(self.frame_start.elapsed()));
         self.frame_start = Instant::now();
 
         Ok(())
