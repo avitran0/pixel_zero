@@ -23,7 +23,6 @@ pub mod color;
 mod drm;
 mod egl;
 pub mod font;
-mod frame;
 mod framebuffer;
 mod gbm;
 mod quad;
