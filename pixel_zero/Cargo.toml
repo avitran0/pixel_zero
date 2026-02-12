@@ -3,9 +3,6 @@ name = "pixel_zero"
 version = "0.1.0"
 edition = "2024"
 
-[lints]
-workspace = true
-
 [lib]
 crate-type = ["rlib", "cdylib"]
 
@@ -20,7 +17,6 @@ glam = { workspace = true }
 log = { workspace = true }
 thiserror = { workspace = true }
 bytemuck = { workspace = true }
-libc = "0.2"
 drm = "0.14"
 gbm = { version = "0.18", default-features = false, features = [
     "drm-support",
@@ -31,4 +27,12 @@ gl = "0.14"
 nix = { version = "0.31", features = ["term"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 parking_lot = "0.12"
-goblin = "0.10"
+goblin = { version = "0.10", default-features = false, features = [
+    "std",
+    "elf64",
+    "elf32",
+    "endian_fd",
+] }
+
+[lints]
+workspace = true

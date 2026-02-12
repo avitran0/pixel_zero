@@ -13,7 +13,7 @@ mod keys;
 #[repr(C)]
 #[derive(Debug)]
 struct InputEvent {
-    time: libc::timeval,
+    time: nix::libc::timeval,
     kind: u16,
     code: u16,
     value: i32,
@@ -88,7 +88,7 @@ impl Input {
 
             let Ok(file) = File::options()
                 .read(true)
-                .custom_flags(libc::O_NONBLOCK)
+                .custom_flags(nix::libc::O_NONBLOCK)
                 .open(entry.path())
             else {
                 continue;

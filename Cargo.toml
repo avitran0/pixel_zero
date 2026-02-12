@@ -7,7 +7,6 @@ pedantic = "allow"
 
 [workspace.dependencies]
 pixel_zero = { path = "pixel_zero" }
-elf_metadata = { path = "elf_metadata" }
 anyhow = "1.0"
 bytemuck = "1.25"
 glam = "0.30"
