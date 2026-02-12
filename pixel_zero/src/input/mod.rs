@@ -6,33 +6,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-const EV_KEY: u16 = 0x01;
+use crate::input::keys::*;
 
-const KEY_A: u16 = 30;
-const KEY_B: u16 = 48;
-const KEY_L: u16 = 38;
-const KEY_R: u16 = 19;
-// start
-const KEY_DOT: u16 = 52;
-// select
-const KEY_COMMA: u16 = 51;
-
-const KEY_UP: u16 = 103;
-const KEY_DOWN: u16 = 108;
-const KEY_LEFT: u16 = 105;
-const KEY_RIGHT: u16 = 106;
-
-const BTN_DPAD_UP: u16 = 0x220;
-const BTN_DPAD_DOWN: u16 = 0x221;
-const BTN_DPAD_LEFT: u16 = 0x222;
-const BTN_DPAD_RIGHT: u16 = 0x223;
-
-const BTN_SOUTH: u16 = 0x130;
-const BTN_EAST: u16 = 0x131;
-const BTN_START: u16 = 0x134;
-const BTN_SELECT: u16 = 0x136;
-const BTN_TL: u16 = 0x137;
-const BTN_TR: u16 = 0x138;
+mod keys;
 
 #[repr(C)]
 #[derive(Debug)]
@@ -155,6 +131,8 @@ impl Input {
                     KEY_COMMA | BTN_SELECT => Button::Select,
                     KEY_L | BTN_TL => Button::L,
                     KEY_R | BTN_TR => Button::R,
+
+                    KEY_ESC => std::process::exit(0),
 
                     _ => continue,
                 };
