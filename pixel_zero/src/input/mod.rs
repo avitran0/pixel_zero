@@ -1,10 +1,15 @@
 use std::{
-    collections::HashMap,
     fs::File,
     io::Read,
-    os::unix::fs::{FileTypeExt, OpenOptionsExt},
+    os::{
+        fd::AsRawFd,
+        unix::fs::{FileTypeExt, OpenOptionsExt},
+    },
     time::{Duration, Instant},
 };
+
+use nix::ioctl_read_buf;
+use strum::EnumCount;
 
 use crate::input::keys::*;
 
@@ -19,7 +24,7 @@ struct InputEvent {
     value: i32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, EnumCount)]
 pub enum Button {
     Up,
     Down,
@@ -33,6 +38,12 @@ pub enum Button {
     Select,
 }
 
+impl Button {
+    fn index(&self) -> usize {
+        *self as usize
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ButtonState {
     Pressed,
@@ -43,8 +54,8 @@ const SCAN_INTERVAL: Duration = Duration::from_secs(5);
 pub struct Input {
     device_files: Vec<File>,
     last_scanned: Instant,
-    current_state: HashMap<Button, ButtonState>,
-    previous_state: HashMap<Button, ButtonState>,
+    current_state: [ButtonState; Button::COUNT],
+    previous_state: [ButtonState; Button::COUNT],
 }
 
 impl Default for Input {
@@ -54,11 +65,13 @@ impl Default for Input {
         Self {
             device_files,
             last_scanned: Instant::now(),
-            current_state: HashMap::new(),
-            previous_state: HashMap::new(),
+            current_state: [ButtonState::Released; Button::COUNT],
+            previous_state: [ButtonState::Released; Button::COUNT],
         }
     }
 }
+
+ioctl_read_buf!(key_bits, b'E', 0x20 + EV_KEY, u8);
 
 impl Input {
     fn scan_devices() -> Vec<File> {
@@ -93,9 +106,25 @@ impl Input {
             else {
                 continue;
             };
+
+            let mut bits = [0u8; 1024];
+            if unsafe { key_bits(file.as_raw_fd(), &mut bits) }.is_err() {
+                continue;
+            }
+
+            if !Self::has_bit(&bits, KEY_ESC) && !Self::has_bit(&bits, BTN_DPAD_DOWN) {
+                continue;
+            }
+
             devices.push(file);
         }
         devices
+    }
+
+    fn has_bit(bits: &[u8], bit: u16) -> bool {
+        let byte = bits[(bit / 8) as usize];
+        let mask = 1 << (bit % 8);
+        byte & mask != 0
     }
 
     pub fn update(&mut self) {
@@ -104,7 +133,7 @@ impl Input {
             self.last_scanned = Instant::now();
         }
 
-        self.previous_state = self.current_state.clone();
+        self.previous_state = self.current_state;
 
         for device in &mut self.device_files {
             let mut buf = [0u8; std::mem::size_of::<InputEvent>()];
@@ -143,24 +172,24 @@ impl Input {
                     ButtonState::Pressed
                 };
 
-                self.current_state.insert(button, state);
+                self.current_state[button.index()] = state;
             }
         }
     }
 
     pub fn is_pressed(&self, button: Button) -> bool {
-        self.current_state.get(&button) == Some(&ButtonState::Pressed)
+        self.current_state[button.index()] == ButtonState::Pressed
     }
 
     pub fn just_pressed(&self, button: Button) -> bool {
-        let current = self.current_state.get(&button) == Some(&ButtonState::Pressed);
-        let previous = self.previous_state.get(&button) != Some(&ButtonState::Pressed);
+        let current = self.current_state[button.index()] == ButtonState::Pressed;
+        let previous = self.previous_state[button.index()] != ButtonState::Pressed;
         current && previous
     }
 
     pub fn just_released(&self, button: Button) -> bool {
-        let current = self.current_state.get(&button) == Some(&ButtonState::Released);
-        let previous = self.previous_state.get(&button) != Some(&ButtonState::Released);
+        let current = self.current_state[button.index()] == ButtonState::Released;
+        let previous = self.previous_state[button.index()] != ButtonState::Released;
         current && previous
     }
 }

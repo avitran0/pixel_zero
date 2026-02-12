@@ -24,7 +24,7 @@ gbm = { version = "0.18", default-features = false, features = [
 ] }
 khronos-egl = { version = "6.0", features = ["static"] }
 gl = "0.14"
-nix = { version = "0.31", features = ["term"] }
+nix = { version = "0.31", features = ["term", "ioctl"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 parking_lot = "0.12"
 goblin = { version = "0.10", default-features = false, features = [
@@ -33,6 +33,7 @@ goblin = { version = "0.10", default-features = false, features = [
     "elf32",
     "endian_fd",
 ] }
+strum = { version = "0.27", features = ["derive"] }
 
 [lints]
 workspace = true
