@@ -58,10 +58,10 @@ pub struct Graphics {
     frame_start: Instant,
 }
 
-static LOADED: AtomicBool = AtomicBool::new(false);
+pub(crate) static GRAPHICS_LOADED: AtomicBool = AtomicBool::new(false);
 impl Graphics {
     pub fn load() -> Result<Self, GraphicsError> {
-        if LOADED.swap(true, Ordering::Relaxed) {
+        if GRAPHICS_LOADED.swap(true, Ordering::Relaxed) {
             return Err(GraphicsError::AlreadyLoaded);
         }
 
@@ -147,6 +147,7 @@ impl Graphics {
 
 impl Drop for Graphics {
     fn drop(&mut self) {
+        GRAPHICS_LOADED.store(false, Ordering::Relaxed);
         unsafe {
             std::ptr::drop_in_place(&mut self.framebuffer);
         }
@@ -154,6 +155,5 @@ impl Drop for Graphics {
         if let Err(e) = self.drm.gpu().destroy_framebuffer(self.drm_fb) {
             log::error!("failed to destroy framebuffer on Graphics drop: {e}");
         }
-        LOADED.store(false, Ordering::Relaxed);
     }
 }

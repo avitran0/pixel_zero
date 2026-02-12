@@ -1,8 +1,10 @@
-use std::ffi::CString;
+use std::{ffi::CString, sync::atomic::Ordering};
 
 use gl::types::GLchar;
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use thiserror::Error;
+
+use crate::graphics::GRAPHICS_LOADED;
 
 #[derive(Debug, Error)]
 pub enum ShaderError {
@@ -179,6 +181,9 @@ impl Shader {
 
 impl Drop for Shader {
     fn drop(&mut self) {
+        if !GRAPHICS_LOADED.load(Ordering::Relaxed) {
+            return;
+        }
         unsafe {
             gl::DeleteProgram(self.program);
         }

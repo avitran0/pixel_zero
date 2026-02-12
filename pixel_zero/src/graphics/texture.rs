@@ -1,8 +1,14 @@
-use std::{io::Cursor, path::Path, sync::Arc};
+use std::{
+    io::Cursor,
+    path::Path,
+    sync::{Arc, atomic::Ordering},
+};
 
 use glam::{UVec2, uvec2};
 use image::ImageReader;
 use thiserror::Error;
+
+use crate::graphics::GRAPHICS_LOADED;
 
 #[derive(Debug, Error)]
 pub enum TextureError {
@@ -148,6 +154,9 @@ impl TextureInner {
 
 impl Drop for TextureInner {
     fn drop(&mut self) {
+        if !GRAPHICS_LOADED.load(Ordering::Relaxed) {
+            return;
+        }
         unsafe {
             gl::DeleteTextures(1, &raw const self.texture);
         }

@@ -1,8 +1,11 @@
+use std::sync::atomic::Ordering;
+
 use glam::{Mat4, UVec2, ivec2, uvec2};
 
 use crate::{
     Frame, HEIGHT, WIDTH,
     graphics::{
+        GRAPHICS_LOADED,
         color::Color,
         frame::DrawCommand,
         quad::Quad,
@@ -181,6 +184,9 @@ impl Framebuffer {
 
 impl Drop for Framebuffer {
     fn drop(&mut self) {
+        if !GRAPHICS_LOADED.load(Ordering::Relaxed) {
+            return;
+        }
         unsafe {
             gl::DeleteFramebuffers(1, &raw const self.framebuffer);
         }

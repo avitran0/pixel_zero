@@ -1,3 +1,7 @@
+use std::sync::atomic::Ordering;
+
+use crate::graphics::GRAPHICS_LOADED;
+
 pub(crate) struct Quad {
     vbo: u32,
     vao: u32,
@@ -61,6 +65,9 @@ impl Quad {
 
 impl Drop for Quad {
     fn drop(&mut self) {
+        if !GRAPHICS_LOADED.load(Ordering::Relaxed) {
+            return;
+        }
         unsafe {
             gl::DeleteBuffers(1, &raw const self.vbo);
             gl::DeleteVertexArrays(1, &raw const self.vao);
