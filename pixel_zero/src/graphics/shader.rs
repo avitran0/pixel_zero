@@ -1,5 +1,6 @@
 use std::ffi::CString;
 
+use gl::types::GLchar;
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use thiserror::Error;
 
@@ -33,7 +34,7 @@ impl Shader {
         let shader = unsafe { gl::CreateShader(kind) };
 
         unsafe {
-            let sources = [source.as_ptr().cast::<i8>()];
+            let sources = [source.as_ptr().cast::<GLchar>()];
             let lengths = [source.len() as i32];
 
             gl::ShaderSource(shader, 1, sources.as_ptr(), lengths.as_ptr());
@@ -59,7 +60,7 @@ impl Shader {
                     shader,
                     log_length,
                     std::ptr::null_mut(),
-                    buffer.as_mut_ptr().cast::<i8>(),
+                    buffer.as_mut_ptr().cast::<GLchar>(),
                 );
             }
 
@@ -111,7 +112,7 @@ impl Shader {
                     program,
                     log_length,
                     std::ptr::null_mut(),
-                    buffer.as_mut_ptr().cast::<i8>(),
+                    buffer.as_mut_ptr().cast::<GLchar>(),
                 );
             }
 
