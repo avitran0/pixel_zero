@@ -5,24 +5,24 @@ use std::{
 
 use ::drm::control::{Device as _, PageFlipFlags, framebuffer as drmfb};
 use ::gbm::{BufferObject, FrontBufferError};
-use glam::IVec2;
 use thiserror::Error;
 
-use crate::graphics::{
-    color::Color,
-    drm::{Drm, DrmError},
-    egl::Egl,
-    font::Font,
-    framebuffer::Framebuffer,
-    gbm::Gbm,
-    shader::ShaderError,
-    sprite::Sprite,
+use crate::{
+    Frame,
+    graphics::{
+        drm::{Drm, DrmError},
+        egl::Egl,
+        framebuffer::Framebuffer,
+        gbm::Gbm,
+        shader::ShaderError,
+    },
 };
 
 pub mod color;
 mod drm;
 mod egl;
 pub mod font;
+pub mod frame;
 mod framebuffer;
 mod gbm;
 mod quad;
@@ -94,21 +94,9 @@ impl Graphics {
         })
     }
 
-    pub fn clear(&self, color: Color) {
-        self.framebuffer.clear(color);
-    }
-
-    pub fn draw_sprite(&self, sprite: &Sprite, position: IVec2) {
-        self.framebuffer.draw_sprite(sprite, position);
-    }
-
-    pub fn draw_text(&self, font: &Font, text: &str, position: IVec2) {
-        self.framebuffer.draw_text(font, text, position);
-    }
-
     const FRAME_DURATION: Duration = Duration::from_micros(16667);
-    pub fn present(&mut self) -> Result<(), GraphicsError> {
-        self.framebuffer.present();
+    pub fn present_frame(&mut self, frame: &Frame) -> Result<(), GraphicsError> {
+        self.framebuffer.present_frame(frame);
 
         self.egl
             .instance()

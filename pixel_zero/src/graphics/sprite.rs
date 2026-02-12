@@ -1,36 +1,53 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
-use glam::{UVec2, Vec2, vec2};
+use glam::{UVec2, Vec2, Vec4, vec2, vec4};
 
 use crate::graphics::texture::{Texture, TextureError};
 
-pub struct Sprite {
-    texture: Texture,
-    region: TextureRegion,
-}
+#[derive(Debug, Clone)]
+pub struct Sprite(Arc<SpriteInner>);
 
 impl Sprite {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, TextureError> {
-        let texture = Texture::load(path)?;
-        let region = TextureRegion::full();
-        Ok(Self { texture, region })
+        let inner = SpriteInner::load(path)?;
+        Ok(Self(Arc::new(inner)))
     }
 
-    pub fn load_binary(bytes: &[u8]) -> Result<Self, TextureError> {
-        let texture = Texture::load_binary_png(bytes)?;
-        let region = TextureRegion::full();
-        Ok(Self { texture, region })
+    pub fn load_binary_png(bytes: &[u8]) -> Result<Self, TextureError> {
+        let inner = SpriteInner::load_binary_png(bytes)?;
+        Ok(Self(Arc::new(inner)))
     }
 
     pub(crate) fn texture(&self) -> &Texture {
-        &self.texture
+        &self.0.texture
     }
 
     pub(crate) fn region(&self) -> &TextureRegion {
-        &self.region
+        &self.0.region
     }
 }
 
+#[derive(Debug, Clone)]
+struct SpriteInner {
+    texture: Arc<Texture>,
+    region: TextureRegion,
+}
+
+impl SpriteInner {
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, TextureError> {
+        let texture = Arc::new(Texture::load(path)?);
+        let region = TextureRegion::full();
+        Ok(Self { texture, region })
+    }
+
+    pub fn load_binary_png(bytes: &[u8]) -> Result<Self, TextureError> {
+        let texture = Arc::new(Texture::load_binary_png(bytes)?);
+        let region = TextureRegion::full();
+        Ok(Self { texture, region })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct TextureRegion {
     min: Vec2,
     max: Vec2,
@@ -58,11 +75,17 @@ impl TextureRegion {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn min(&self) -> Vec2 {
         self.min
     }
 
+    #[allow(dead_code)]
     pub(crate) fn max(&self) -> Vec2 {
         self.max
+    }
+
+    pub(crate) fn vec4(&self) -> Vec4 {
+        vec4(self.min.x, self.min.y, self.max.x, self.max.y)
     }
 }

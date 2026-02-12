@@ -1,6 +1,5 @@
 use pixel_zero::{
-    graphics::{Graphics, color::Color},
-    input::{Button, Input},
+    Frame, graphics::{Graphics, color::Color}, input::{Button, Input}
 };
 
 use crate::screen::{Screen, game_menu::GameMenu};
@@ -30,11 +29,12 @@ impl Launcher {
                 self.exit = true;
             }
             self.screen.update(&self.input);
-            self.graphics.clear(Color::rgb(100, 150, 240));
+            let mut frame = Frame::default();
+            frame.set_clear_color(Color::rgb(100, 150, 240));
 
-            self.screen.render(&self.graphics);
+            self.screen.render(&mut frame);
 
-            self.graphics.present().unwrap();
+            self.graphics.present_frame(&frame).unwrap();
             self.graphics.check_error();
         }
     }

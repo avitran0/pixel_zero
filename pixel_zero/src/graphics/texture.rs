@@ -1,4 +1,4 @@
-use std::{io::Cursor, path::Path};
+use std::{io::Cursor, path::Path, sync::Arc};
 
 use glam::{UVec2, uvec2};
 use image::ImageReader;
@@ -12,12 +12,58 @@ pub enum TextureError {
     Image(#[from] image::ImageError),
 }
 
-pub struct Texture {
+#[derive(Debug)]
+pub struct Texture(Arc<TextureInner>);
+
+impl Texture {
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, TextureError> {
+        let inner = TextureInner::load(path)?;
+        Ok(Self(Arc::new(inner)))
+    }
+
+    pub fn load_binary_png(data: &[u8]) -> Result<Self, TextureError> {
+        let inner = TextureInner::load_binary_png(data)?;
+        Ok(Self(Arc::new(inner)))
+    }
+
+    pub fn load_rgba(data: &[u8], size: UVec2) -> Self {
+        let inner = TextureInner::load_rgba(data, size);
+        Self(Arc::new(inner))
+    }
+
+    pub fn load_empty(size: UVec2) -> Self {
+        let inner = TextureInner::laod_empty(size);
+        Self(Arc::new(inner))
+    }
+
+    pub fn bind(&self) {
+        unsafe {
+            gl::BindTexture(gl::TEXTURE_2D, self.0.texture);
+        }
+    }
+
+    pub fn unbind() {
+        unsafe {
+            gl::BindTexture(gl::TEXTURE_2D, 0);
+        }
+    }
+
+    pub fn size(&self) -> UVec2 {
+        self.0.size
+    }
+
+    pub(crate) fn handle(&self) -> u32 {
+        self.0.texture
+    }
+}
+
+#[derive(Debug)]
+struct TextureInner {
     texture: u32,
     size: UVec2,
 }
 
-impl Texture {
+impl TextureInner {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, TextureError> {
         let image = ImageReader::open(path)?.decode()?;
         let rgba_image = image.to_rgba8();
@@ -44,7 +90,7 @@ impl Texture {
         Self { texture, size }
     }
 
-    pub fn empty(size: UVec2) -> Self {
+    pub fn laod_empty(size: UVec2) -> Self {
         let texture = Self::create_texture(size, None);
         Self { texture, size }
     }
@@ -98,29 +144,9 @@ impl Texture {
 
         texture
     }
-
-    pub fn bind(&self) {
-        unsafe {
-            gl::BindTexture(gl::TEXTURE_2D, self.texture);
-        }
-    }
-
-    pub fn unbind() {
-        unsafe {
-            gl::BindTexture(gl::TEXTURE_2D, 0);
-        }
-    }
-
-    pub const fn size(&self) -> UVec2 {
-        self.size
-    }
-
-    pub(crate) const fn handle(&self) -> u32 {
-        self.texture
-    }
 }
 
-impl Drop for Texture {
+impl Drop for TextureInner {
     fn drop(&mut self) {
         unsafe {
             gl::DeleteTextures(1, &raw const self.texture);

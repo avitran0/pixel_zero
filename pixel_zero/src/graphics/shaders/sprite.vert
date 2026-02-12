@@ -6,12 +6,11 @@ varying vec2 v_texcoord;
 uniform mat4 u_projection;
 uniform vec2 u_position;
 uniform vec2 u_size;
-uniform vec2 u_texcoord_min;
-uniform vec2 u_texcoord_max;
+uniform vec4 u_texcoords;
 
 void main() {
     vec2 position = a_position * u_size + u_position;
     gl_Position = u_projection * vec4(position, 0.0, 1.0);
 
-    v_texcoord = mix(u_texcoord_min, u_texcoord_max, a_texcoord);
+    v_texcoord = mix(u_texcoords.xy, u_texcoords.zw, a_texcoord);
 }

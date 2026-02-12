@@ -3,6 +3,7 @@ use std::{
     fs::File,
     io::{BufReader, Cursor, Read},
     path::Path,
+    sync::Arc,
 };
 
 use bytemuck::{AnyBitPattern, NoUninit};
@@ -26,22 +27,66 @@ pub enum FontError {
     InvalidUnicode,
 }
 
+#[derive(Debug, Clone)]
+pub struct Font(Arc<FontInner>);
+
+impl Font {
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, FontError> {
+        let inner = FontInner::load(path)?;
+        Ok(Self(Arc::new(inner)))
+    }
+
+    pub fn load_binary(data: &[u8]) -> Result<Self, FontError> {
+        let inner = FontInner::load_binary(data)?;
+        Ok(Self(Arc::new(inner)))
+    }
+
+    pub fn load_read(reader: &mut impl Read) -> Result<Self, FontError> {
+        let inner = FontInner::load_read(reader)?;
+        Ok(Self(Arc::new(inner)))
+    }
+
+    pub(crate) fn texture(&self) -> &Texture {
+        &self.0.texture
+    }
+
+    pub fn glyph_size(&self) -> UVec2 {
+        self.0.glyph_size
+    }
+
+    pub(crate) fn glyph(&self, c: char) -> Option<&Glyph> {
+        let index = if let Some(char_map) = &self.0.char_map {
+            let index = char_map.get(&c)?;
+            *index
+        } else {
+            c as usize
+        };
+
+        self.0.glyphs.get(index)
+    }
+
+    pub(crate) fn default_glyph(&self) -> &Glyph {
+        &self.0.glyphs[0]
+    }
+}
+
 /// PSF2 Font loader and drawing
-pub struct Font {
+#[derive(Debug)]
+struct FontInner {
     texture: Texture,
     glyph_size: UVec2,
     glyphs: Vec<Glyph>,
     char_map: Option<HashMap<char, usize>>,
 }
 
-impl Font {
+impl FontInner {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, FontError> {
         let file = File::open(path)?;
         let mut reader = BufReader::new(file);
         Self::load_read(&mut reader)
     }
 
-    pub fn load_bin(data: &[u8]) -> Result<Self, FontError> {
+    pub fn load_binary(data: &[u8]) -> Result<Self, FontError> {
         let mut cursor = Cursor::new(data);
         Self::load_read(&mut cursor)
     }
@@ -201,31 +246,9 @@ impl Font {
 
         Ok(unicode_map)
     }
-
-    pub(crate) fn texture(&self) -> &Texture {
-        &self.texture
-    }
-
-    pub fn glyph_size(&self) -> UVec2 {
-        self.glyph_size
-    }
-
-    pub(crate) fn glyph(&self, c: char) -> Option<&Glyph> {
-        let index = if let Some(char_map) = &self.char_map {
-            let index = char_map.get(&c)?;
-            *index
-        } else {
-            c as usize
-        };
-
-        self.glyphs.get(index)
-    }
-
-    pub(crate) fn default_glyph(&self) -> &Glyph {
-        &self.glyphs[0]
-    }
 }
 
+#[derive(Debug)]
 pub(crate) struct Glyph {
     region: TextureRegion,
     advance: u32,

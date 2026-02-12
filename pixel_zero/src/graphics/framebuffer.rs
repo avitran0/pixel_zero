@@ -1,13 +1,12 @@
-use glam::{IVec2, Mat4, UVec2, ivec2, uvec2};
+use glam::{Mat4, UVec2, ivec2, uvec2};
 
 use crate::{
-    HEIGHT, WIDTH,
+    Frame, HEIGHT, WIDTH,
     graphics::{
         color::Color,
-        font::Font,
+        frame::DrawCommand,
         quad::Quad,
         shader::{Shader, ShaderError, Uniform, VertexAttribute},
-        sprite::Sprite,
         texture::Texture,
     },
 };
@@ -29,7 +28,7 @@ impl Framebuffer {
             gl::BindFramebuffer(gl::FRAMEBUFFER, framebuffer);
         }
 
-        let texture = Texture::empty(uvec2(WIDTH, HEIGHT));
+        let texture = Texture::load_empty(uvec2(WIDTH, HEIGHT));
 
         unsafe {
             gl::FramebufferTexture2D(
@@ -115,71 +114,57 @@ impl Framebuffer {
         }
     }
 
-    pub(crate) fn clear(&self, color: Color) {
+    pub(crate) fn present_frame(&self, frame: &Frame) {
         self.bind();
-        let color = color.f32();
+        self.sprite_shader.bind();
+        self.quad.bind_vao();
+
+        let color = frame.clear_color().f32();
         unsafe {
             gl::ClearColor(color.r(), color.g(), color.b(), color.a());
             gl::Clear(gl::COLOR_BUFFER_BIT);
         }
-        self.unbind();
-    }
 
-    pub(crate) fn draw_sprite(&self, sprite: &Sprite, position: IVec2) {
-        self.bind();
-        self.sprite_shader.bind();
-        self.sprite_shader
-            .set_uniform("u_position", Uniform::Vec2(position.as_vec2()));
-        self.sprite_shader
-            .set_uniform("u_size", Uniform::Vec2(sprite.texture().size().as_vec2()));
-        self.sprite_shader
-            .set_uniform("u_texcoord_min", Uniform::Vec2(sprite.region().min()));
-        self.sprite_shader
-            .set_uniform("u_texcoord_max", Uniform::Vec2(sprite.region().max()));
-        sprite.texture().bind();
-        self.quad.bind_vao();
+        for command in frame.commands() {
+            match command {
+                DrawCommand::Sprite { sprite, position } => {
+                    self.sprite_shader
+                        .set_uniform("u_position", Uniform::Vec2(position.as_vec2()));
+                    self.sprite_shader
+                        .set_uniform("u_size", Uniform::Vec2(sprite.texture().size().as_vec2()));
+                    self.sprite_shader
+                        .set_uniform("u_texcoords", Uniform::Vec4(sprite.region().vec4()));
+                    sprite.texture().bind();
+                    self.quad.draw();
+                }
+                DrawCommand::Text {
+                    font,
+                    text,
+                    position,
+                } => {
+                    self.sprite_shader
+                        .set_uniform("u_size", Uniform::Vec2(font.glyph_size().as_vec2()));
+                    font.texture().bind();
 
-        self.quad.draw();
+                    let mut advance = 0;
+                    for char in text.chars() {
+                        let glyph = font.glyph(char).unwrap_or(font.default_glyph());
 
-        Texture::unbind();
-        Quad::unbind_vao();
-        Shader::unbind();
-        self.unbind();
-    }
+                        let char_position = *position + ivec2(advance, 0);
+                        self.sprite_shader
+                            .set_uniform("u_position", Uniform::Vec2(char_position.as_vec2()));
 
-    pub(crate) fn draw_text(&self, font: &Font, text: &str, position: IVec2) {
-        self.bind();
-        self.sprite_shader.bind();
-        self.sprite_shader
-            .set_uniform("u_size", Uniform::Vec2(font.glyph_size().as_vec2()));
-        font.texture().bind();
-        self.quad.bind_vao();
+                        self.sprite_shader
+                            .set_uniform("u_texcoords", Uniform::Vec4(glyph.region().vec4()));
 
-        let mut advance = 0;
-        for char in text.chars() {
-            let glyph = font.glyph(char).unwrap_or(font.default_glyph());
+                        self.quad.draw();
 
-            let position = position + ivec2(advance, 0);
-            self.sprite_shader
-                .set_uniform("u_position", Uniform::Vec2(position.as_vec2()));
-
-            self.sprite_shader
-                .set_uniform("u_texcoord_min", Uniform::Vec2(glyph.region().min()));
-            self.sprite_shader
-                .set_uniform("u_texcoord_max", Uniform::Vec2(glyph.region().max()));
-
-            self.quad.draw();
-
-            advance += glyph.advance().cast_signed();
+                        advance += glyph.advance().cast_signed();
+                    }
+                }
+            }
         }
 
-        Texture::unbind();
-        Quad::unbind_vao();
-        Shader::unbind();
-        self.unbind();
-    }
-
-    pub(crate) fn present(&self) {
         self.unbind();
 
         self.texture.bind();

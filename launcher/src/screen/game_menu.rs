@@ -2,10 +2,11 @@ use std::fs::File;
 
 use glam::ivec2;
 use pixel_zero::{
-    graphics::{font::Font, Graphics},
+    Frame,
+    graphics::font::Font,
     input::Input,
     io::ReadBytes as _,
-    meta::{read_metadata, GameInfo},
+    meta::{GameInfo, read_metadata},
 };
 
 use crate::screen::Screen;
@@ -42,18 +43,18 @@ impl GameMenu {
 
         Self {
             games,
-            font: Font::load_bin(include_bytes!("cozette.psf")).unwrap(),
+            font: Font::load_binary(include_bytes!("cozette.psf")).unwrap(),
         }
     }
 }
 
 impl Screen for GameMenu {
-    fn update(&mut self, input: &Input) {}
+    fn update(&mut self, _input: &Input) {}
 
-    fn render(&self, graphics: &Graphics) {
+    fn render(&self, frame: &mut Frame) {
         let mut offset = 0;
         for game in &self.games {
-            graphics.draw_text(&self.font, &game.name, ivec2(0, offset));
+            frame.draw_text(&self.font, &game.name, ivec2(0, offset));
             offset += self.font.glyph_size().y.cast_signed();
         }
     }
