@@ -39,23 +39,35 @@ pub enum Button {
 }
 
 impl Button {
-    fn index(&self) -> usize {
+    pub fn index(&self) -> usize {
         *self as usize
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ButtonState {
-    Pressed,
-    Released,
+    pub fn from_usize(button: usize) -> Option<Self> {
+        Some(match button {
+            0 => Self::Up,
+            1 => Self::Down,
+            2 => Self::Left,
+            3 => Self::Right,
+            4 => Self::A,
+            5 => Self::B,
+            6 => Self::L,
+            7 => Self::R,
+            8 => Self::Start,
+            9 => Self::Select,
+            _ => return None,
+        })
+    }
+
+    pub const BUTTON_COUNT: usize = Self::COUNT;
 }
 
 const SCAN_INTERVAL: Duration = Duration::from_secs(5);
 pub struct Input {
     device_files: Vec<File>,
     last_scanned: Instant,
-    current_state: [ButtonState; Button::COUNT],
-    previous_state: [ButtonState; Button::COUNT],
+    current_state: [bool; Button::COUNT],
+    previous_state: [bool; Button::COUNT],
 }
 
 impl Default for Input {
@@ -65,8 +77,8 @@ impl Default for Input {
         Self {
             device_files,
             last_scanned: Instant::now(),
-            current_state: [ButtonState::Released; Button::COUNT],
-            previous_state: [ButtonState::Released; Button::COUNT],
+            current_state: [false; Button::COUNT],
+            previous_state: [false; Button::COUNT],
         }
     }
 }
@@ -166,11 +178,7 @@ impl Input {
                     _ => continue,
                 };
 
-                let state = if event.value == 0 {
-                    ButtonState::Released
-                } else {
-                    ButtonState::Pressed
-                };
+                let state = event.value != 0;
 
                 self.current_state[button.index()] = state;
             }
@@ -178,18 +186,22 @@ impl Input {
     }
 
     pub fn is_pressed(&self, button: Button) -> bool {
-        self.current_state[button.index()] == ButtonState::Pressed
+        self.current_state[button.index()]
     }
 
     pub fn just_pressed(&self, button: Button) -> bool {
-        let current = self.current_state[button.index()] == ButtonState::Pressed;
-        let previous = self.previous_state[button.index()] != ButtonState::Pressed;
-        current && previous
+        let current = self.current_state[button.index()];
+        let previous = self.previous_state[button.index()];
+        current && !previous
     }
 
     pub fn just_released(&self, button: Button) -> bool {
-        let current = self.current_state[button.index()] == ButtonState::Released;
-        let previous = self.previous_state[button.index()] != ButtonState::Released;
-        current && previous
+        let current = self.current_state[button.index()];
+        let previous = self.previous_state[button.index()];
+        !current && previous
+    }
+
+    pub fn state(&self) -> &[bool; Button::COUNT] {
+        &self.current_state
     }
 }

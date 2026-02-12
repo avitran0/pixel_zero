@@ -23,7 +23,7 @@ pub const BTN_DPAD_RIGHT: u16 = 0x223;
 
 pub const BTN_SOUTH: u16 = 0x130;
 pub const BTN_EAST: u16 = 0x131;
-pub const BTN_START: u16 = 0x134;
-pub const BTN_SELECT: u16 = 0x136;
-pub const BTN_TL: u16 = 0x137;
-pub const BTN_TR: u16 = 0x138;
+pub const BTN_START: u16 = 0x13A;
+pub const BTN_SELECT: u16 = 0x13B;
+pub const BTN_TL: u16 = 0x136;
+pub const BTN_TR: u16 = 0x137;

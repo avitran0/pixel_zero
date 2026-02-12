@@ -3,7 +3,7 @@ use std::fs::File;
 use glam::ivec2;
 use pixel_zero::{
     graphics::{Font, Frame},
-    input::Input,
+    input::{Button, Input},
     io::ReadBytes as _,
     meta::{GameInfo, read_metadata},
 };
@@ -12,6 +12,7 @@ use crate::screen::Screen;
 
 pub struct GameMenu {
     games: Vec<GameInfo>,
+    button_state: [bool; Button::BUTTON_COUNT],
 }
 
 impl GameMenu {
@@ -39,18 +40,33 @@ impl GameMenu {
             if games.len() == 1 { "" } else { "s" }
         );
 
-        Self { games }
+        let button_state = [false; Button::BUTTON_COUNT];
+
+        Self {
+            games,
+            button_state,
+        }
     }
 }
 
 impl Screen for GameMenu {
-    fn update(&mut self, _input: &Input) {}
+    fn update(&mut self, input: &Input) {
+        self.button_state = *input.state();
+    }
 
     fn render(&self, frame: &mut Frame, font: &Font) {
         let mut offset = 0;
         for game in &self.games {
             frame.draw_text(font, &game.name, ivec2(0, offset));
             offset += font.glyph_size().y.cast_signed();
+        }
+
+        for (index, button) in self.button_state.iter().enumerate() {
+            if *button {
+                let button = Button::from_usize(index).unwrap();
+                frame.draw_text(font, &format!("{button:?}"), ivec2(0, offset));
+                offset += font.glyph_size().y.cast_signed();
+            }
         }
     }
 }
