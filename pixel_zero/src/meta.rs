@@ -1,4 +1,4 @@
-pub use elf_macros::*;
+pub use elf_macros::embed_metadata;
 
 use std::{
     io::{Cursor, Seek as _, SeekFrom},

@@ -3,11 +3,11 @@ use std::sync::atomic::Ordering;
 use glam::{Mat4, UVec2, ivec2, uvec2};
 
 use crate::{
-    Frame, HEIGHT, WIDTH,
+    HEIGHT, WIDTH,
     graphics::{
         GRAPHICS_LOADED,
         color::Color,
-        frame::DrawCommand,
+        frame::{DrawCommand, Frame},
         quad::Quad,
         shader::{Shader, ShaderError, Uniform, VertexAttribute},
         texture::Texture,

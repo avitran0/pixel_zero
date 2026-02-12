@@ -1,4 +1,7 @@
-use pixel_zero::{Font, Frame, input::Input};
+use pixel_zero::{
+    graphics::{Font, Frame},
+    input::Input,
+};
 
 pub mod game_menu;
 

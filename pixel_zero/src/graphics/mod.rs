@@ -8,7 +8,6 @@ use ::gbm::{BufferObject, FrontBufferError};
 use thiserror::Error;
 
 use crate::{
-    Frame,
     graphics::{
         drm::{Drm, DrmError},
         egl::Egl,
@@ -16,6 +15,11 @@ use crate::{
         gbm::Gbm,
         shader::ShaderError,
     },
+    terminal::TerminalGuard,
+};
+
+pub use crate::graphics::{
+    color::Color, font::Font, frame::Frame, sprite::Sprite, texture::Texture,
 };
 
 pub mod color;
@@ -57,6 +61,8 @@ pub struct Graphics {
     drm: Drm,
     gbm: Gbm,
     egl: Egl,
+
+    _terminal_guard: TerminalGuard,
 }
 
 pub(crate) static GRAPHICS_LOADED: AtomicBool = AtomicBool::new(false);
@@ -65,6 +71,9 @@ impl Graphics {
         if GRAPHICS_LOADED.swap(true, Ordering::Relaxed) {
             return Err(GraphicsError::AlreadyLoaded);
         }
+
+        let _terminal_guard =
+            TerminalGuard::new().map_err(|e| std::io::Error::from_raw_os_error(e as i32))?;
 
         let drm = Drm::load()?;
         let mut gbm = Gbm::load(&drm)?;
@@ -92,6 +101,7 @@ impl Graphics {
             buffer_object,
             framebuffer,
             frame_start,
+            _terminal_guard,
         })
     }
 

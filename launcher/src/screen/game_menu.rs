@@ -2,8 +2,7 @@ use std::fs::File;
 
 use glam::ivec2;
 use pixel_zero::{
-    Frame,
-    graphics::font::Font,
+    graphics::{Font, Frame},
     input::Input,
     io::ReadBytes as _,
     meta::{GameInfo, read_metadata},

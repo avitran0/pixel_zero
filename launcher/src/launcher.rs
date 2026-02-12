@@ -1,6 +1,5 @@
 use pixel_zero::{
-    Font, Frame,
-    graphics::{Graphics, color::Color},
+    graphics::{Font, Frame, Graphics, color::Color},
     input::{Button, Input},
 };
 
@@ -28,8 +27,7 @@ impl Launcher {
     pub fn run(&mut self) {
         while !self.exit {
             self.input.update();
-            if self.input.just_pressed(Button::A) {
-                log::info!("exiting");
+            if self.input.just_pressed(Button::Start) {
                 self.exit = true;
             }
             self.screen.update(&self.input);

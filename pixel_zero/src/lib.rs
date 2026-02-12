@@ -4,10 +4,9 @@ pub mod input;
 pub mod io;
 pub mod log;
 pub mod meta;
-pub mod terminal;
+mod terminal;
 
-pub use glam::{IVec2, ivec2};
-pub use graphics::{Graphics, font::Font, sprite::Sprite, frame::Frame};
+pub use glam;
 
 pub const WIDTH: u32 = 320;
 pub const HEIGHT: u32 = 240;

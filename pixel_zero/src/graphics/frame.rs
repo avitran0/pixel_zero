@@ -1,6 +1,6 @@
 use glam::IVec2;
 
-use crate::{Font, Sprite, graphics::color::Color};
+use crate::graphics::{Color, Font, Sprite};
 
 pub struct Frame {
     draw_commands: Vec<DrawCommand>,
