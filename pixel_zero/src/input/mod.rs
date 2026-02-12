@@ -124,7 +124,7 @@ impl Input {
                 continue;
             }
 
-            if !Self::has_bit(&bits, KEY_ESC) && !Self::has_bit(&bits, BTN_DPAD_DOWN) {
+            if !Self::has_bit(&bits, KEY_ESC) && !Self::has_bit(&bits, BTN_START) {
                 continue;
             }
 
