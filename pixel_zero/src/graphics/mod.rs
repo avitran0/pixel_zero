@@ -72,8 +72,7 @@ impl Graphics {
             return Err(GraphicsError::AlreadyLoaded);
         }
 
-        let _terminal_guard =
-            TerminalGuard::new().map_err(|e| std::io::Error::from_raw_os_error(e as i32))?;
+        let _terminal_guard = TerminalGuard::new().map_err(std::io::Error::from)?;
 
         let drm = Drm::load()?;
         let mut gbm = Gbm::load(&drm)?;
