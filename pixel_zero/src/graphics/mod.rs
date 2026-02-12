@@ -47,15 +47,16 @@ pub enum GraphicsError {
 }
 
 pub struct Graphics {
-    drm: Drm,
-    gbm: Gbm,
-    egl: Egl,
+    // this needs to be first to be dropped first
+    framebuffer: Framebuffer,
+    frame_start: Instant,
 
     drm_fb: drmfb::Handle,
     buffer_object: BufferObject<()>,
 
-    framebuffer: Framebuffer,
-    frame_start: Instant,
+    drm: Drm,
+    gbm: Gbm,
+    egl: Egl,
 }
 
 pub(crate) static GRAPHICS_LOADED: AtomicBool = AtomicBool::new(false);
@@ -147,13 +148,9 @@ impl Graphics {
 
 impl Drop for Graphics {
     fn drop(&mut self) {
-        GRAPHICS_LOADED.store(false, Ordering::Relaxed);
-        unsafe {
-            std::ptr::drop_in_place(&mut self.framebuffer);
-        }
-
         if let Err(e) = self.drm.gpu().destroy_framebuffer(self.drm_fb) {
             log::error!("failed to destroy framebuffer on Graphics drop: {e}");
         }
+        GRAPHICS_LOADED.store(false, Ordering::Relaxed);
     }
 }
