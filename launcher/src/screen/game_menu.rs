@@ -2,10 +2,10 @@ use std::fs::File;
 
 use glam::ivec2;
 use pixel_zero::{
-    graphics::{Graphics, font::Font},
+    graphics::{font::Font, Graphics},
     input::Input,
     io::ReadBytes as _,
-    meta::{GameInfo, read_metadata},
+    meta::{read_metadata, GameInfo},
 };
 
 use crate::screen::Screen;
@@ -37,7 +37,7 @@ impl GameMenu {
         log::info!(
             "found {} game{}",
             games.len(),
-            if games.len() == 1 { "s" } else { "" }
+            if games.len() == 1 { "" } else { "s" }
         );
 
         Self {
