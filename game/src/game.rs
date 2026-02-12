@@ -1,0 +1,38 @@
+use pixel_zero::{
+    glam::ivec2,
+    graphics::{Font, Frame, Graphics},
+    input::{Button, Input},
+};
+
+pub struct Game {
+    graphics: Graphics,
+    input: Input,
+    font: Font,
+    exit: bool,
+}
+
+impl Game {
+    pub fn new() -> Self {
+        Self {
+            graphics: Graphics::load().unwrap(),
+            input: Input::default(),
+            font: Font::load_binary(include_bytes!("../assets/cozette.psf")).unwrap(),
+            exit: false,
+        }
+    }
+
+    pub fn run(&mut self) {
+        while !self.exit {
+            self.input.update();
+            if self.input.just_pressed(Button::Start) {
+                break;
+            }
+
+            let mut frame = Frame::default();
+
+            frame.draw_text(&self.font, "text here", ivec2(0, 0));
+
+            self.graphics.present_frame(&frame).unwrap();
+        }
+    }
+}
