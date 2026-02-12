@@ -13,7 +13,6 @@ use crate::screen::Screen;
 
 pub struct GameMenu {
     games: Vec<GameInfo>,
-    font: Font,
 }
 
 impl GameMenu {
@@ -41,21 +40,18 @@ impl GameMenu {
             if games.len() == 1 { "" } else { "s" }
         );
 
-        Self {
-            games,
-            font: Font::load_binary(include_bytes!("cozette.psf")).unwrap(),
-        }
+        Self { games }
     }
 }
 
 impl Screen for GameMenu {
     fn update(&mut self, _input: &Input) {}
 
-    fn render(&self, frame: &mut Frame) {
+    fn render(&self, frame: &mut Frame, font: &Font) {
         let mut offset = 0;
         for game in &self.games {
-            frame.draw_text(&self.font, &game.name, ivec2(0, offset));
-            offset += self.font.glyph_size().y.cast_signed();
+            frame.draw_text(font, &game.name, ivec2(0, offset));
+            offset += font.glyph_size().y.cast_signed();
         }
     }
 }
