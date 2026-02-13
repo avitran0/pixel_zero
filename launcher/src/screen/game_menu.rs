@@ -25,7 +25,7 @@ impl GameMenu {
                 let entry = entry.ok()?;
                 let mut file = File::open(entry.path()).ok()?;
                 let magic = file.read_u32().ok()?;
-                if magic == 0x7F454C46 || magic == 0x464C457F {
+                if magic == 0x7F45_4C46 || magic == 0x464C_457F {
                     Some(entry.path())
                 } else {
                     None

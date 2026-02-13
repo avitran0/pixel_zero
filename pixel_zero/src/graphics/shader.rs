@@ -191,6 +191,7 @@ impl Drop for Shader {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum Uniform {
     Int(i32),
     Float(f32),
@@ -218,6 +219,7 @@ impl Uniform {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum VertexAttribute {
     Float,
     Vec2,

@@ -12,7 +12,7 @@ impl Frame {
         self.draw_commands.push(DrawCommand::Sprite {
             sprite: sprite.clone(),
             position,
-        })
+        });
     }
 
     pub fn draw_text(&mut self, font: &Font, text: &str, position: IVec2) {
@@ -20,11 +20,11 @@ impl Frame {
             font: font.clone(),
             text: text.to_owned(),
             position,
-        })
+        });
     }
 
     pub fn set_clear_color(&mut self, color: Color) {
-        self.clear_color = color
+        self.clear_color = color;
     }
 
     pub(crate) fn clear_color(&self) -> Color {

@@ -50,6 +50,7 @@ impl Font {
         &self.0.texture
     }
 
+    #[must_use]
     pub fn glyph_size(&self) -> UVec2 {
         self.0.glyph_size
     }
@@ -151,7 +152,7 @@ impl FontInner {
         };
 
         let space_index = if let Some(char_map) = &char_map {
-            char_map.get(&' ').cloned().unwrap_or(' ' as usize)
+            char_map.get(&' ').copied().unwrap_or(' ' as usize)
         } else {
             ' ' as usize
         };

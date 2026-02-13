@@ -72,7 +72,7 @@ impl Graphics {
             return Err(GraphicsError::AlreadyLoaded);
         }
 
-        let _terminal_guard = TerminalGuard::new().map_err(std::io::Error::from)?;
+        let terminal_guard = TerminalGuard::new().map_err(std::io::Error::from)?;
 
         let drm = Drm::load()?;
         let mut gbm = Gbm::load(&drm)?;
@@ -93,14 +93,14 @@ impl Graphics {
         let frame_start = Instant::now();
 
         Ok(Self {
+            framebuffer,
+            frame_start,
+            drm_fb,
+            buffer_object,
             drm,
             gbm,
             egl,
-            drm_fb,
-            buffer_object,
-            framebuffer,
-            frame_start,
-            _terminal_guard,
+            _terminal_guard: terminal_guard,
         })
     }
 

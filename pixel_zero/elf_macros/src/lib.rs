@@ -37,7 +37,7 @@ pub fn embed_metadata(input: TokenStream) -> TokenStream {
 
     blob.extend_from_slice(&MetaHeader::MAGIC);
     blob.extend_from_slice(&version.to_le_bytes());
-    blob.extend_from_slice(&(name.len() as u32).to_le_bytes());
+    blob.extend_from_slice(&u32::try_from(name.len()).unwrap_or(0).to_le_bytes());
     blob.extend_from_slice(name.as_bytes());
 
     let length = blob.len();
