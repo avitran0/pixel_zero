@@ -23,7 +23,8 @@ gbm = { version = "0.18", default-features = false, features = [
     "import-egl",
 ] }
 khronos-egl = { version = "6.0", features = ["static"] }
-gl = "0.14"
+#gl = "0.14"
+glow = "0.16"
 nix = { version = "0.31", features = ["term", "ioctl"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 parking_lot = "0.12"

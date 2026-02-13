@@ -2,7 +2,7 @@ use std::fs::File;
 
 use glam::ivec2;
 use pixel_zero::{
-    graphics::{Font, Frame},
+    graphics::{Font, Frame, Graphics},
     input::{Button, Input},
     io::ReadBytes as _,
     meta::{GameInfo, read_metadata},
@@ -16,7 +16,7 @@ pub struct GameMenu {
 }
 
 impl GameMenu {
-    pub fn new() -> Self {
+    pub fn init(_graphics: &Graphics) -> Self {
         let exe_dir = std::env::current_exe().unwrap();
         let dir = exe_dir.parent().unwrap();
         let games: Vec<GameInfo> = std::fs::read_dir(dir)

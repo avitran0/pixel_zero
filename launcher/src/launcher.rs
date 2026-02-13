@@ -15,11 +15,17 @@ pub struct Launcher {
 
 impl Launcher {
     pub fn new() -> Self {
+        let graphics = Graphics::load().unwrap();
+        let screen = Box::new(GameMenu::init(&graphics));
+        let font = graphics
+            .load_font_binary(include_bytes!("../assets/cozette.psf"))
+            .unwrap();
+
         Self {
-            graphics: Graphics::load().unwrap(),
+            graphics,
             input: Input::default(),
-            font: Font::load_binary(include_bytes!("../assets/cozette.psf")).unwrap(),
-            screen: Box::new(GameMenu::new()),
+            font,
+            screen,
             exit: false,
         }
     }
@@ -37,7 +43,6 @@ impl Launcher {
             self.screen.render(&mut frame, &self.font);
 
             self.graphics.present_frame(&frame).unwrap();
-            self.graphics.check_error();
         }
     }
 }

@@ -1,4 +1,6 @@
 use std::{
+    io::Read,
+    path::Path,
     sync::atomic::{AtomicBool, Ordering},
     time::{Duration, Instant},
 };
@@ -11,9 +13,11 @@ use crate::{
     graphics::{
         drm::{Drm, DrmError},
         egl::Egl,
-        framebuffer::Framebuffer,
+        font::FontError,
+        framebuffer::{Framebuffer, FramebufferError},
         gbm::Gbm,
         shader::ShaderError,
+        texture::TextureError,
     },
     terminal::TerminalGuard,
 };
@@ -42,8 +46,10 @@ pub enum GraphicsError {
     Drm(#[from] DrmError),
     #[error("EGL Error: {0}")]
     Egl(#[from] khronos_egl::Error),
-    #[error("Shader Error: {0}")]
+    #[error("{0}")]
     Shader(#[from] ShaderError),
+    #[error("{0}")]
+    Framebuffer(#[from] FramebufferError),
     #[error("Front Buffer Error: {0}")]
     FrontBuffer(#[from] FrontBufferError),
     #[error("Graphics is already loaded")]
@@ -89,7 +95,7 @@ impl Graphics {
             Some(*drm.mode()),
         )?;
 
-        let framebuffer = Framebuffer::load(drm.size())?;
+        let framebuffer = Framebuffer::load(egl.gl(), drm.size())?;
         let frame_start = Instant::now();
 
         Ok(Self {
@@ -104,9 +110,29 @@ impl Graphics {
         })
     }
 
+    pub fn load_sprite(&self, path: impl AsRef<Path>) -> Result<Sprite, TextureError> {
+        Sprite::load(self.egl.gl(), path)
+    }
+
+    pub fn load_sprite_binary_png(&self, data: &[u8]) -> Result<Sprite, TextureError> {
+        Sprite::load_binary_png(self.egl.gl(), data)
+    }
+
+    pub fn load_font(&self, path: impl AsRef<Path>) -> Result<Font, FontError> {
+        Font::load(self.egl.gl(), path)
+    }
+
+    pub fn load_font_binary(&self, data: &[u8]) -> Result<Font, FontError> {
+        Font::load_binary(self.egl.gl(), data)
+    }
+
+    pub fn load_font_read(&self, reader: &mut impl Read) -> Result<Font, FontError> {
+        Font::load_read(self.egl.gl(), reader)
+    }
+
     const FRAME_DURATION: Duration = Duration::from_micros(16667);
     pub fn present_frame(&mut self, frame: &Frame) -> Result<(), GraphicsError> {
-        self.framebuffer.present_frame(frame);
+        self.framebuffer.present_frame(self.egl.gl(), frame);
 
         self.egl
             .instance()
@@ -130,28 +156,6 @@ impl Graphics {
         self.frame_start = Instant::now();
 
         Ok(())
-    }
-
-    pub fn check_error(&self) {
-        loop {
-            let error = unsafe { gl::GetError() };
-            if error == gl::NO_ERROR {
-                break;
-            }
-
-            let err_str = match error {
-                gl::INVALID_ENUM => "Invalid Enum",
-                gl::INVALID_VALUE => "Invalid Value",
-                gl::INVALID_OPERATION => "Invalid Operation",
-                gl::INVALID_FRAMEBUFFER_OPERATION => "Invalid Framebuffer Operation",
-                gl::OUT_OF_MEMORY => "Out Of Memory",
-                gl::STACK_UNDERFLOW => "Stack Underflow",
-                gl::STACK_OVERFLOW => "Stack Overflow",
-                _ => "?",
-            };
-
-            log::error!("opengl error {error}: {err_str}");
-        }
     }
 }
 

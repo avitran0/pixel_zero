@@ -8,13 +8,13 @@ use crate::graphics::texture::{Texture, TextureError};
 pub struct Sprite(Arc<SpriteInner>);
 
 impl Sprite {
-    pub fn load(path: impl AsRef<Path>) -> Result<Self, TextureError> {
-        let inner = SpriteInner::load(path)?;
+    pub(crate) fn load(gl: &glow::Context, path: impl AsRef<Path>) -> Result<Self, TextureError> {
+        let inner = SpriteInner::load(gl, path)?;
         Ok(Self(Arc::new(inner)))
     }
 
-    pub fn load_binary_png(bytes: &[u8]) -> Result<Self, TextureError> {
-        let inner = SpriteInner::load_binary_png(bytes)?;
+    pub(crate) fn load_binary_png(gl: &glow::Context, bytes: &[u8]) -> Result<Self, TextureError> {
+        let inner = SpriteInner::load_binary_png(gl, bytes)?;
         Ok(Self(Arc::new(inner)))
     }
 
@@ -34,14 +34,14 @@ struct SpriteInner {
 }
 
 impl SpriteInner {
-    pub fn load(path: impl AsRef<Path>) -> Result<Self, TextureError> {
-        let texture = Arc::new(Texture::load(path)?);
+    fn load(gl: &glow::Context, path: impl AsRef<Path>) -> Result<Self, TextureError> {
+        let texture = Arc::new(Texture::load(gl, path)?);
         let region = TextureRegion::full();
         Ok(Self { texture, region })
     }
 
-    pub fn load_binary_png(bytes: &[u8]) -> Result<Self, TextureError> {
-        let texture = Arc::new(Texture::load_binary_png(bytes)?);
+    fn load_binary_png(gl: &glow::Context, bytes: &[u8]) -> Result<Self, TextureError> {
+        let texture = Arc::new(Texture::load_binary_png(gl, bytes)?);
         let region = TextureRegion::full();
         Ok(Self { texture, region })
     }

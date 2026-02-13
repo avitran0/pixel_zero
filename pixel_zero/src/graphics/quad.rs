@@ -1,10 +1,9 @@
-use std::sync::atomic::Ordering;
-
-use crate::graphics::GRAPHICS_LOADED;
+use glow::{HasContext, NativeBuffer, NativeVertexArray};
+use image::EncodableLayout;
 
 pub(crate) struct Quad {
-    vbo: u32,
-    vao: u32,
+    vao: NativeVertexArray,
+    vbo: NativeBuffer,
 }
 
 impl Quad {
@@ -13,64 +12,49 @@ impl Quad {
         1.0, 1.0, 1.0, 0.0, 1.0, 0.0,
     ];
 
-    pub fn new() -> Self {
-        let mut vao = 0;
-        let mut vbo = 0;
+    pub fn new(gl: &glow::Context) -> Result<Self, String> {
+        let vao = unsafe { gl.create_vertex_array()? };
+        let vbo = unsafe { gl.create_buffer()? };
 
         unsafe {
-            gl::GenVertexArrays(1, &raw mut vao);
-            gl::GenBuffers(1, &raw mut vbo);
-            gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-            gl::BufferData(
-                gl::ARRAY_BUFFER,
-                size_of_val(&Self::VERTEX_DATA).cast_signed(),
-                Self::VERTEX_DATA.as_ref().as_ptr().cast(),
-                gl::STATIC_DRAW,
+            gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+            gl.buffer_data_u8_slice(
+                glow::ARRAY_BUFFER,
+                Self::VERTEX_DATA.as_bytes(),
+                glow::STATIC_DRAW,
             );
         }
 
-        Self { vbo, vao }
+        Ok(Self { vao, vbo })
     }
 
-    pub fn bind_vao(&self) {
+    pub fn bind_vao(&self, gl: &glow::Context) {
         unsafe {
-            gl::BindVertexArray(self.vao);
+            gl.bind_vertex_array(Some(self.vao));
         }
     }
 
-    pub fn bind_vbo(&self) {
+    pub fn bind_vbo(&self, gl: &glow::Context) {
         unsafe {
-            gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
+            gl.bind_buffer(glow::ARRAY_BUFFER, Some(self.vbo));
         }
     }
 
-    pub fn unbind_vao() {
+    pub fn unbind_vao(gl: &glow::Context) {
         unsafe {
-            gl::BindVertexArray(0);
+            gl.bind_vertex_array(None);
         }
     }
 
-    pub fn unbind_vbo() {
+    pub fn unbind_vbo(gl: &glow::Context) {
         unsafe {
-            gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+            gl.bind_buffer(glow::ARRAY_BUFFER, None);
         }
     }
 
-    pub fn draw(&self) {
+    pub fn draw(&self, gl: &glow::Context) {
         unsafe {
-            gl::DrawArrays(gl::TRIANGLES, 0, 6);
-        }
-    }
-}
-
-impl Drop for Quad {
-    fn drop(&mut self) {
-        if !GRAPHICS_LOADED.load(Ordering::Relaxed) {
-            return;
-        }
-        unsafe {
-            gl::DeleteBuffers(1, &raw const self.vbo);
-            gl::DeleteVertexArrays(1, &raw const self.vao);
+            gl.draw_arrays(glow::TRIANGLES, 0, 6);
         }
     }
 }

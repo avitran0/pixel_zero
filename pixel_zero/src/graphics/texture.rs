@@ -1,17 +1,14 @@
-use std::{
-    io::Cursor,
-    path::Path,
-    sync::{Arc, atomic::Ordering},
-};
+use std::{io::Cursor, path::Path, sync::Arc};
 
 use glam::{UVec2, uvec2};
+use glow::{HasContext, NativeTexture};
 use image::ImageReader;
 use thiserror::Error;
 
-use crate::graphics::GRAPHICS_LOADED;
-
 #[derive(Debug, Error)]
 pub enum TextureError {
+    #[error("OpenGL error: {0}")]
+    OpenGL(String),
     #[error("I/O Error: {0}")]
     IO(#[from] std::io::Error),
     #[error("Image Decoding: {0}")]
@@ -22,35 +19,39 @@ pub enum TextureError {
 pub struct Texture(Arc<TextureInner>);
 
 impl Texture {
-    pub fn load(path: impl AsRef<Path>) -> Result<Self, TextureError> {
-        let inner = TextureInner::load(path)?;
+    pub(crate) fn load(gl: &glow::Context, path: impl AsRef<Path>) -> Result<Self, TextureError> {
+        let inner = TextureInner::load(gl, path)?;
         Ok(Self(Arc::new(inner)))
     }
 
-    pub fn load_binary_png(data: &[u8]) -> Result<Self, TextureError> {
-        let inner = TextureInner::load_binary_png(data)?;
+    pub(crate) fn load_binary_png(gl: &glow::Context, data: &[u8]) -> Result<Self, TextureError> {
+        let inner = TextureInner::load_binary_png(gl, data)?;
         Ok(Self(Arc::new(inner)))
     }
 
-    pub fn load_rgba(data: &[u8], size: UVec2) -> Self {
-        let inner = TextureInner::load_rgba(data, size);
-        Self(Arc::new(inner))
+    pub(crate) fn load_rgba(
+        gl: &glow::Context,
+        data: &[u8],
+        size: UVec2,
+    ) -> Result<Self, TextureError> {
+        let inner = TextureInner::load_rgba(gl, data, size)?;
+        Ok(Self(Arc::new(inner)))
     }
 
-    pub fn load_empty(size: UVec2) -> Self {
-        let inner = TextureInner::laod_empty(size);
-        Self(Arc::new(inner))
+    pub(crate) fn load_empty(gl: &glow::Context, size: UVec2) -> Result<Self, TextureError> {
+        let inner = TextureInner::laod_empty(gl, size)?;
+        Ok(Self(Arc::new(inner)))
     }
 
-    pub fn bind(&self) {
+    pub(crate) fn bind(&self, gl: &glow::Context) {
         unsafe {
-            gl::BindTexture(gl::TEXTURE_2D, self.0.texture);
+            gl.bind_texture(glow::TEXTURE_2D, Some(self.0.texture));
         }
     }
 
-    pub fn unbind() {
+    pub(crate) fn unbind(gl: &glow::Context) {
         unsafe {
-            gl::BindTexture(gl::TEXTURE_2D, 0);
+            gl.bind_texture(glow::TEXTURE_2D, None);
         }
     }
 
@@ -58,107 +59,93 @@ impl Texture {
         self.0.size
     }
 
-    pub(crate) fn handle(&self) -> u32 {
+    pub(crate) fn handle(&self) -> NativeTexture {
         self.0.texture
     }
 }
 
 #[derive(Debug)]
 struct TextureInner {
-    texture: u32,
+    texture: NativeTexture,
     size: UVec2,
 }
 
 impl TextureInner {
-    pub fn load(path: impl AsRef<Path>) -> Result<Self, TextureError> {
+    fn load(gl: &glow::Context, path: impl AsRef<Path>) -> Result<Self, TextureError> {
         let image = ImageReader::open(path)?.decode()?;
         let rgba_image = image.to_rgba8();
         let size = uvec2(image.width(), image.height());
 
-        let texture = Self::create_texture(size, Some(rgba_image.as_raw()));
+        let texture = Self::create_texture(gl, size, Some(rgba_image.as_raw()))?;
 
         Ok(Self { texture, size })
     }
 
-    pub fn load_binary_png(data: &[u8]) -> Result<Self, TextureError> {
+    fn load_binary_png(gl: &glow::Context, data: &[u8]) -> Result<Self, TextureError> {
         let cursor = Cursor::new(data);
         let image = ImageReader::new(cursor).with_guessed_format()?.decode()?;
         let rgba_image = image.to_rgba8();
         let size = uvec2(image.width(), image.height());
 
-        let texture = Self::create_texture(size, Some(rgba_image.as_raw()));
+        let texture = Self::create_texture(gl, size, Some(rgba_image.as_raw()))?;
 
         Ok(Self { texture, size })
     }
 
-    pub fn load_rgba(data: &[u8], size: UVec2) -> Self {
-        let texture = Self::create_texture(size, Some(data));
-        Self { texture, size }
+    fn load_rgba(gl: &glow::Context, data: &[u8], size: UVec2) -> Result<Self, TextureError> {
+        let texture = Self::create_texture(gl, size, Some(data))?;
+        Ok(Self { texture, size })
     }
 
-    pub fn laod_empty(size: UVec2) -> Self {
-        let texture = Self::create_texture(size, None);
-        Self { texture, size }
+    fn laod_empty(gl: &glow::Context, size: UVec2) -> Result<Self, TextureError> {
+        let texture = Self::create_texture(gl, size, None)?;
+        Ok(Self { texture, size })
     }
 
-    fn create_texture(size: UVec2, data: Option<&[u8]>) -> u32 {
-        let mut texture = 0;
+    fn create_texture(
+        gl: &glow::Context,
+        size: UVec2,
+        data: Option<&[u8]>,
+    ) -> Result<NativeTexture, TextureError> {
+        let texture = unsafe { gl.create_texture().map_err(TextureError::OpenGL)? };
+
         unsafe {
-            gl::GenTextures(1, &raw mut texture);
-            gl::BindTexture(gl::TEXTURE_2D, texture);
-
-            gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_MIN_FILTER,
-                gl::NEAREST.cast_signed(),
+            gl.bind_texture(glow::TEXTURE_2D, Some(texture));
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_MIN_FILTER,
+                glow::NEAREST.cast_signed(),
             );
-            gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_MAG_FILTER,
-                gl::NEAREST.cast_signed(),
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_MAG_FILTER,
+                glow::NEAREST.cast_signed(),
             );
-            gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_S,
-                gl::CLAMP_TO_EDGE.cast_signed(),
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_S,
+                glow::CLAMP_TO_EDGE.cast_signed(),
             );
-            gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_T,
-                gl::CLAMP_TO_EDGE.cast_signed(),
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_T,
+                glow::CLAMP_TO_EDGE.cast_signed(),
             );
 
-            let pixels = if let Some(data) = data {
-                data.as_ptr().cast()
-            } else {
-                std::ptr::null()
-            };
-            gl::TexImage2D(
-                gl::TEXTURE_2D,
+            gl.tex_image_2d(
+                glow::TEXTURE_2D,
                 0,
-                gl::RGBA.cast_signed(),
+                glow::RGBA.cast_signed(),
                 size.x.cast_signed(),
                 size.y.cast_signed(),
                 0,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                pixels,
+                glow::RGBA,
+                glow::UNSIGNED_BYTE,
+                glow::PixelUnpackData::Slice(data),
             );
-
-            gl::BindTexture(gl::TEXTURE_2D, 0);
+            gl.bind_texture(glow::TEXTURE_2D, None);
         }
 
-        texture
-    }
-}
-
-impl Drop for TextureInner {
-    fn drop(&mut self) {
-        if !GRAPHICS_LOADED.load(Ordering::Relaxed) {
-            return;
-        }
-        unsafe {
-            gl::DeleteTextures(1, &raw const self.texture);
-        }
+        Ok(texture)
     }
 }

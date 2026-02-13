@@ -13,10 +13,15 @@ pub struct Game {
 
 impl Game {
     pub fn new() -> Self {
+        let graphics = Graphics::load().unwrap();
+        let font = graphics
+            .load_font_binary(include_bytes!("../assets/cozette.psf"))
+            .unwrap();
+
         Self {
-            graphics: Graphics::load().unwrap(),
+            graphics,
             input: Input::default(),
-            font: Font::load_binary(include_bytes!("../assets/cozette.psf")).unwrap(),
+            font,
             exit: false,
         }
     }

@@ -1,13 +1,11 @@
-use std::{ffi::CString, sync::atomic::Ordering};
-
-use gl::types::GLchar;
 use glam::{Mat4, Vec2, Vec3, Vec4};
+use glow::{HasContext, NativeProgram, NativeShader, NativeUniformLocation};
 use thiserror::Error;
-
-use crate::graphics::GRAPHICS_LOADED;
 
 #[derive(Debug, Error)]
 pub enum ShaderError {
+    #[error("OpenGL error: {0}")]
+    OpenGL(String),
     #[error("Shader compilation error: {0}")]
     Compile(String),
     #[error("Shader linking error: {0}")]
@@ -15,133 +13,84 @@ pub enum ShaderError {
 }
 
 pub(crate) struct Shader {
-    program: u32,
+    program: NativeProgram,
 }
 
 impl Shader {
-    pub(crate) fn load(vertex: &str, fragment: &str) -> Result<Self, ShaderError> {
-        let vertex = Self::compile(vertex, gl::VERTEX_SHADER)?;
-        let fragment = Self::compile(fragment, gl::FRAGMENT_SHADER)?;
-        let program = Self::link(vertex, fragment)?;
+    pub(crate) fn load(
+        gl: &glow::Context,
+        vertex: &str,
+        fragment: &str,
+    ) -> Result<Self, ShaderError> {
+        let vertex = Self::compile(gl, vertex, glow::VERTEX_SHADER)?;
+        let fragment = Self::compile(gl, fragment, glow::FRAGMENT_SHADER)?;
+        let program = Self::link(gl, vertex, fragment)?;
 
         unsafe {
-            gl::DeleteShader(vertex);
-            gl::DeleteShader(fragment);
+            gl.delete_shader(vertex);
+            gl.delete_shader(fragment);
         }
 
         Ok(Self { program })
     }
 
-    fn compile(source: &str, kind: u32) -> Result<u32, ShaderError> {
-        let shader = unsafe { gl::CreateShader(kind) };
+    fn compile(gl: &glow::Context, source: &str, kind: u32) -> Result<NativeShader, ShaderError> {
+        let shader = unsafe { gl.create_shader(kind).map_err(ShaderError::OpenGL)? };
 
         unsafe {
-            let sources = [source.as_ptr().cast::<GLchar>()];
-            let lengths = [source.len() as i32];
-
-            gl::ShaderSource(shader, 1, sources.as_ptr(), lengths.as_ptr());
-            gl::CompileShader(shader);
+            gl.shader_source(shader, source);
+            gl.compile_shader(shader);
         }
 
-        let mut success = 0;
-        unsafe {
-            gl::GetShaderiv(shader, gl::COMPILE_STATUS, &raw mut success);
-        }
+        let success = unsafe { gl.get_shader_compile_status(shader) };
 
-        if success == 1 {
+        if success {
             Ok(shader)
         } else {
-            let mut log_length = 0;
-            unsafe {
-                gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &raw mut log_length);
-            }
-
-            let mut buffer = vec![0u8; log_length as usize];
-            unsafe {
-                gl::GetShaderInfoLog(
-                    shader,
-                    log_length,
-                    std::ptr::null_mut(),
-                    buffer.as_mut_ptr().cast::<GLchar>(),
-                );
-            }
-
-            let error_log = String::from_utf8_lossy(&buffer);
-            unsafe {
-                gl::DeleteShader(shader);
-            }
-
-            let shader_type_str = match kind {
-                gl::VERTEX_SHADER => "vertex",
-                gl::FRAGMENT_SHADER => "fragment",
-                _ => "unknown",
-            };
-
-            Err(ShaderError::Compile(format!(
-                "Failed to compile {shader_type_str} shader: {error_log}"
-            )))
+            let log = unsafe { gl.get_shader_info_log(shader) };
+            Err(ShaderError::Compile(log))
         }
     }
 
-    fn link(vertex: u32, fragment: u32) -> Result<u32, ShaderError> {
-        let program = unsafe { gl::CreateProgram() };
+    fn link(
+        gl: &glow::Context,
+        vertex: NativeShader,
+        fragment: NativeShader,
+    ) -> Result<NativeProgram, ShaderError> {
+        let program = unsafe { gl.create_program().map_err(ShaderError::Linking)? };
 
         unsafe {
-            gl::AttachShader(program, vertex);
-            gl::AttachShader(program, fragment);
-            gl::LinkProgram(program);
+            gl.attach_shader(program, vertex);
+            gl.attach_shader(program, fragment);
+            gl.link_program(program);
 
-            gl::DetachShader(program, vertex);
-            gl::DetachShader(program, fragment);
+            gl.detach_shader(program, vertex);
+            gl.detach_shader(program, fragment);
         }
 
-        let mut success = 0;
-        unsafe {
-            gl::GetProgramiv(program, gl::LINK_STATUS, &raw mut success);
-        }
+        let success = unsafe { gl.get_program_link_status(program) };
 
-        if success == 1 {
+        if success {
             Ok(program)
         } else {
-            let mut log_length = 0;
-            unsafe {
-                gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &raw mut log_length);
-            }
-
-            let mut buffer = vec![0u8; log_length as usize];
-            unsafe {
-                gl::GetProgramInfoLog(
-                    program,
-                    log_length,
-                    std::ptr::null_mut(),
-                    buffer.as_mut_ptr().cast::<GLchar>(),
-                );
-            }
-
-            let error_log = String::from_utf8_lossy(&buffer);
-            unsafe {
-                gl::DeleteProgram(program);
-            }
-
-            Err(ShaderError::Linking(format!(
-                "Failed to link shader program: {error_log}"
-            )))
+            let log = unsafe { gl.get_program_info_log(program) };
+            Err(ShaderError::Linking(log))
         }
     }
 
-    pub fn bind(&self) {
+    pub fn bind(&self, gl: &glow::Context) {
         unsafe {
-            gl::UseProgram(self.program);
+            gl.use_program(Some(self.program));
         }
     }
 
-    pub fn unbind() {
+    pub fn unbind(gl: &glow::Context) {
         unsafe {
-            gl::UseProgram(0);
+            gl.use_program(None);
         }
     }
 
-    pub fn attributes(&self, attributes: &[VertexAttribute]) {
+    pub fn attributes(&self, gl: &glow::Context, attributes: &[VertexAttribute]) {
         let stride = attributes
             .iter()
             .map(VertexAttribute::size_bytes)
@@ -151,41 +100,28 @@ impl Shader {
         let mut offset = 0;
         for (index, attribute) in attributes.iter().enumerate() {
             unsafe {
-                gl::VertexAttribPointer(
+                gl.vertex_attrib_pointer_f32(
                     index as u32,
                     attribute.gl_size(),
-                    attribute.gl_type(),
-                    gl::FALSE,
+                    glow::FLOAT,
+                    false,
                     stride,
-                    offset as *const _,
+                    offset,
                 );
-                gl::EnableVertexAttribArray(index as u32);
+
+                gl.enable_vertex_attrib_array(index as u32);
             }
-            offset += attribute.size_bytes();
+            offset += attribute.size_bytes() as i32;
         }
     }
 
-    fn uniform_location(&self, name: &str) -> Option<i32> {
-        let cname = CString::new(name).ok()?;
-        let location = unsafe { gl::GetUniformLocation(self.program, cname.as_ptr()) };
-
-        if location >= 0 { Some(location) } else { None }
+    fn uniform_location(&self, gl: &glow::Context, name: &str) -> Option<NativeUniformLocation> {
+        unsafe { gl.get_uniform_location(self.program, name) }
     }
 
-    pub fn set_uniform(&self, name: &str, uniform: Uniform) {
-        if let Some(location) = self.uniform_location(name) {
-            uniform.set(location);
-        }
-    }
-}
-
-impl Drop for Shader {
-    fn drop(&mut self) {
-        if !GRAPHICS_LOADED.load(Ordering::Relaxed) {
-            return;
-        }
-        unsafe {
-            gl::DeleteProgram(self.program);
+    pub fn set_uniform(&self, gl: &glow::Context, name: &str, uniform: Uniform) {
+        if let Some(location) = self.uniform_location(gl, name) {
+            uniform.set(gl, location);
         }
     }
 }
@@ -202,16 +138,16 @@ pub(crate) enum Uniform {
 }
 
 impl Uniform {
-    fn set(&self, location: i32) {
+    fn set(&self, gl: &glow::Context, location: NativeUniformLocation) {
         unsafe {
             match self {
-                Self::Int(int) => gl::Uniform1i(location, *int),
-                Self::Float(float) => gl::Uniform1f(location, *float),
-                Self::Vec2(vec) => gl::Uniform2f(location, vec.x, vec.y),
-                Self::Vec3(vec) => gl::Uniform3f(location, vec.x, vec.y, vec.z),
-                Self::Vec4(vec) => gl::Uniform4f(location, vec.x, vec.y, vec.z, vec.w),
+                Self::Int(int) => gl.uniform_1_i32(Some(&location), *int),
+                Self::Float(float) => gl.uniform_1_f32(Some(&location), *float),
+                Self::Vec2(vec) => gl.uniform_2_f32(Some(&location), vec.x, vec.y),
+                Self::Vec3(vec) => gl.uniform_3_f32(Some(&location), vec.x, vec.y, vec.z),
+                Self::Vec4(vec) => gl.uniform_4_f32(Some(&location), vec.x, vec.y, vec.z, vec.w),
                 Self::Mat4(mat) => {
-                    gl::UniformMatrix4fv(location, 1, gl::FALSE, mat.as_ref().as_ptr());
+                    gl.uniform_matrix_4_f32_slice(Some(&location), false, &mat.to_cols_array());
                 }
             }
         }
@@ -243,12 +179,6 @@ impl VertexAttribute {
             Self::Vec2 => size_of::<Vec2>(),
             Self::Vec3 => size_of::<Vec3>(),
             Self::Vec4 => size_of::<Vec4>(),
-        }
-    }
-
-    fn gl_type(&self) -> u32 {
-        match self {
-            Self::Float | Self::Vec2 | Self::Vec3 | Self::Vec4 => gl::FLOAT,
         }
     }
 }

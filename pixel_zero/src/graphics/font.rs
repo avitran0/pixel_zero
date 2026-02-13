@@ -11,7 +11,10 @@ use glam::{UVec2, uvec2};
 use thiserror::Error;
 
 use crate::{
-    graphics::{sprite::TextureRegion, texture::Texture},
+    graphics::{
+        sprite::TextureRegion,
+        texture::{Texture, TextureError},
+    },
     io::ReadBytes as _,
 };
 
@@ -19,6 +22,8 @@ use crate::{
 pub enum FontError {
     #[error("I/O Error: {0}")]
     IO(#[from] std::io::Error),
+    #[error("{0}")]
+    Texture(#[from] TextureError),
     #[error("File magic is 0x{expected:X}, but is 0x{actual:X}")]
     InvalidMagic { expected: u32, actual: u32 },
     #[error("File version should be 0, but is {0}")]
@@ -31,18 +36,18 @@ pub enum FontError {
 pub struct Font(Arc<FontInner>);
 
 impl Font {
-    pub fn load(path: impl AsRef<Path>) -> Result<Self, FontError> {
-        let inner = FontInner::load(path)?;
+    pub fn load(gl: &glow::Context, path: impl AsRef<Path>) -> Result<Self, FontError> {
+        let inner = FontInner::load(gl, path)?;
         Ok(Self(Arc::new(inner)))
     }
 
-    pub fn load_binary(data: &[u8]) -> Result<Self, FontError> {
-        let inner = FontInner::load_binary(data)?;
+    pub fn load_binary(gl: &glow::Context, data: &[u8]) -> Result<Self, FontError> {
+        let inner = FontInner::load_binary(gl, data)?;
         Ok(Self(Arc::new(inner)))
     }
 
-    pub fn load_read(reader: &mut impl Read) -> Result<Self, FontError> {
-        let inner = FontInner::load_read(reader)?;
+    pub fn load_read(gl: &glow::Context, reader: &mut impl Read) -> Result<Self, FontError> {
+        let inner = FontInner::load_read(gl, reader)?;
         Ok(Self(Arc::new(inner)))
     }
 
@@ -81,18 +86,18 @@ struct FontInner {
 }
 
 impl FontInner {
-    pub fn load(path: impl AsRef<Path>) -> Result<Self, FontError> {
+    pub fn load(gl: &glow::Context, path: impl AsRef<Path>) -> Result<Self, FontError> {
         let file = File::open(path)?;
         let mut reader = BufReader::new(file);
-        Self::load_read(&mut reader)
+        Self::load_read(gl, &mut reader)
     }
 
-    pub fn load_binary(data: &[u8]) -> Result<Self, FontError> {
+    pub fn load_binary(gl: &glow::Context, data: &[u8]) -> Result<Self, FontError> {
         let mut cursor = Cursor::new(data);
-        Self::load_read(&mut cursor)
+        Self::load_read(gl, &mut cursor)
     }
 
-    pub fn load_read(reader: &mut impl Read) -> Result<Self, FontError> {
+    pub fn load_read(gl: &glow::Context, reader: &mut impl Read) -> Result<Self, FontError> {
         let header: Header = reader.read_value()?;
         if header.magic != Header::MAGIC {
             return Err(FontError::InvalidMagic {
@@ -161,7 +166,7 @@ impl FontInner {
             space.advance = header.width / 2;
         }
 
-        let texture = Texture::load_rgba(&atlas_data, atlas_size);
+        let texture = Texture::load_rgba(gl, &atlas_data, atlas_size)?;
 
         log::info!("loaded font with {} glyphs", glyphs.len());
 

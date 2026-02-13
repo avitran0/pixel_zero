@@ -1,6 +1,5 @@
-use std::ffi::{CStr, c_void};
-
 use gbm::AsRaw as _;
+use glow::HasContext as _;
 use khronos_egl::{self as egl, Config, Context, Display, Instance, Static, Surface};
 
 use crate::graphics::gbm::Gbm;
@@ -11,6 +10,7 @@ pub(crate) struct Egl {
     _config: Config,
     _context: Context,
     surface: Surface,
+    gl: glow::Context,
 }
 
 impl Egl {
@@ -63,22 +63,22 @@ impl Egl {
         }?;
         instance.make_current(display, Some(surface), Some(surface), Some(context))?;
 
-        gl::load_with(|s| instance.get_proc_address(s).unwrap() as *const _);
+        let mut gl = unsafe {
+            glow::Context::from_loader_function(|s| {
+                instance.get_proc_address(s).unwrap() as *const _
+            })
+        };
+        unsafe {
+            gl.viewport(0, 0, gbm.size().x.cast_signed(), gbm.size().y.cast_signed());
+        }
 
-        unsafe { gl::Viewport(0, 0, gbm.size().x.cast_signed(), gbm.size().y.cast_signed()) };
-
-        let extensions = unsafe { gl::GetString(gl::EXTENSIONS) };
-        let extensions = unsafe { CStr::from_ptr(extensions.cast()) };
-        let extensions: Vec<_> = extensions
-            .to_str()
-            .unwrap()
-            .split_ascii_whitespace()
-            .collect();
+        let extensions = unsafe { gl.get_parameter_string(glow::EXTENSIONS) };
+        let extensions: Vec<_> = extensions.split_ascii_whitespace().collect();
 
         let has_debug = extensions.contains(&"KHR_debug") || extensions.contains(&"GL_KHR_debug");
         if has_debug {
             log::info!("debug extension found");
-            setup_debug_callback();
+            setup_debug_callback(&mut gl);
         }
 
         instance.swap_buffers(display, surface)?;
@@ -89,6 +89,7 @@ impl Egl {
             _config: config,
             _context: context,
             surface,
+            gl,
         })
     }
 
@@ -103,63 +104,52 @@ impl Egl {
     pub(crate) fn surface(&self) -> Surface {
         self.surface
     }
+
+    pub(crate) fn gl(&self) -> &glow::Context {
+        &self.gl
+    }
 }
 
-fn setup_debug_callback() {
-    extern "system" fn debug_callback(
-        source: gl::types::GLenum,
-        kind: gl::types::GLenum,
-        _id: gl::types::GLuint,
-        severity: gl::types::GLenum,
-        _length: gl::types::GLsizei,
-        message: *const gl::types::GLchar,
-        _user_param: *mut c_void,
-    ) {
-        let message = unsafe { CStr::from_ptr(message) };
-        let Ok(message) = message.to_str() else {
-            return;
-        };
-
+fn setup_debug_callback(gl: &mut glow::Context) {
+    fn debug_callback(source: u32, kind: u32, _id: u32, severity: u32, message: &str) {
         let source = match source {
-            gl::DEBUG_SOURCE_API => "API",
-            gl::DEBUG_SOURCE_APPLICATION => "Application",
-            gl::DEBUG_SOURCE_SHADER_COMPILER => "Shader Compiler",
-            gl::DEBUG_SOURCE_THIRD_PARTY => "Third Party",
-            gl::DEBUG_SOURCE_WINDOW_SYSTEM => "Window System",
-            gl::DEBUG_SOURCE_OTHER => "Other",
+            glow::DEBUG_SOURCE_API => "API",
+            glow::DEBUG_SOURCE_APPLICATION => "Application",
+            glow::DEBUG_SOURCE_SHADER_COMPILER => "Shader Compiler",
+            glow::DEBUG_SOURCE_THIRD_PARTY => "Third Party",
+            glow::DEBUG_SOURCE_WINDOW_SYSTEM => "Window System",
+            glow::DEBUG_SOURCE_OTHER => "Other",
             _ => "Unknown",
         };
 
         let kind = match kind {
-            gl::DEBUG_TYPE_ERROR => "Error",
-            gl::DEBUG_TYPE_DEPRECATED_BEHAVIOR => "Deprecated Behavior",
-            gl::DEBUG_TYPE_UNDEFINED_BEHAVIOR => "Undefined Behavior",
-            gl::DEBUG_TYPE_PORTABILITY => "Portability",
-            gl::DEBUG_TYPE_PERFORMANCE => "Performance",
-            gl::DEBUG_TYPE_MARKER => "Marker",
-            gl::DEBUG_TYPE_OTHER => "Other",
+            glow::DEBUG_TYPE_ERROR => "Error",
+            glow::DEBUG_TYPE_DEPRECATED_BEHAVIOR => "Deprecated Behavior",
+            glow::DEBUG_TYPE_UNDEFINED_BEHAVIOR => "Undefined Behavior",
+            glow::DEBUG_TYPE_PORTABILITY => "Portability",
+            glow::DEBUG_TYPE_PERFORMANCE => "Performance",
+            glow::DEBUG_TYPE_MARKER => "Marker",
+            glow::DEBUG_TYPE_OTHER => "Other",
             _ => "Unknown",
         };
 
         match severity {
-            gl::DEBUG_SEVERITY_HIGH => log::error!("[{source}/{kind}] {message}"),
-            gl::DEBUG_SEVERITY_MEDIUM => log::warn!("[{source}/{kind}] {message}"),
+            glow::DEBUG_SEVERITY_HIGH => log::error!("[{source}/{kind}] {message}"),
+            glow::DEBUG_SEVERITY_MEDIUM => log::warn!("[{source}/{kind}] {message}"),
             _ => {}
         }
     }
 
     unsafe {
-        gl::Enable(gl::DEBUG_OUTPUT);
+        gl.enable(glow::DEBUG_OUTPUT);
+        gl.debug_message_callback(debug_callback);
 
-        gl::DebugMessageCallback(Some(debug_callback), std::ptr::null());
-
-        gl::DebugMessageControl(
-            gl::DONT_CARE,
-            gl::DONT_CARE,
-            gl::DEBUG_SEVERITY_NOTIFICATION,
-            0,
-            std::ptr::null(),
-            gl::FALSE,
+        gl.debug_message_control(
+            glow::DONT_CARE,
+            glow::DONT_CARE,
+            glow::DEBUG_SEVERITY_NOTIFICATION,
+            &[],
+            false,
         );
     }
 }
