@@ -3,7 +3,7 @@ members = ["pixel_zero", "pixel_zero/elf_macros", "launcher", "game"]
 resolver = "3"
 
 [workspace.lints.clippy]
-pedantic = "warn"
+pedantic = "allow"
 
 [workspace.dependencies]
 pixel_zero = { path = "pixel_zero" }
