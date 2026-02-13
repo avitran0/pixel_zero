@@ -17,6 +17,15 @@ impl MetaHeader {
     const MAGIC: [u8; 8] = *b"gamemeta";
 }
 
+/// Embeds game metadata into the binary.
+///
+/// # Usage
+///
+/// ```
+/// use elf_macros::embed_metadata;
+///
+/// embed_metadata!(name: "game_name", version: 1);
+/// ```
 #[proc_macro]
 pub fn embed_metadata(input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(input with MetaArgs::parse);

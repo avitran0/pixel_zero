@@ -1,3 +1,7 @@
+//! # Pixel Zero
+//!
+//! This is a game library for embedded linux systems.
+
 mod ffi;
 pub mod graphics;
 pub mod input;
@@ -8,5 +12,7 @@ mod terminal;
 
 pub use glam;
 
+/// Framebuffer width
 pub const WIDTH: u32 = 320;
+/// Framebuffer  height
 pub const HEIGHT: u32 = 240;

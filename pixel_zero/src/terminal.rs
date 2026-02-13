@@ -6,7 +6,6 @@ use nix::{
 };
 
 /// This struct prevents keystrokes ending up in stdout while the program is running.
-/// Only one should be created in `main`, and dropped on program exit.
 pub(crate) struct TerminalGuard {
     original: Termios,
 }

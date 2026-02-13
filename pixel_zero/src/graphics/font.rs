@@ -281,5 +281,5 @@ struct Header {
 }
 
 impl Header {
-    const MAGIC: u32 = 0x864ab572;
+    const MAGIC: u32 = 0x864a_b572;
 }

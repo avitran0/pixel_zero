@@ -3,9 +3,29 @@ use std::{
     io::{BufWriter, Write as _},
 };
 
-use log::{Level, Log};
+use log::{Level, Log, SetLoggerError};
 use parking_lot::Mutex;
 
+/// Simple logger implementation that logs to a given file.
+///
+/// # Usage
+///
+/// ```
+/// use pixel_zero::log::FileLogger;
+///
+/// FileLogger::install("filename.log", log::Level::Info);
+/// ```
+///
+/// This will panic if it cannot open the given file or another logger is already installed.
+/// Alternatively, to handle these errors, use this:
+///
+/// ```
+/// use pixel_zero::log::FileLogger;
+///
+/// if let Ok(logger) = FileLogger::new("filename.log", log::Level::Info) {
+///     let result = logger.init();
+/// }
+/// ```
 pub struct FileLogger {
     writer: Mutex<BufWriter<File>>,
     level: Level,
@@ -14,14 +34,15 @@ pub struct FileLogger {
 impl FileLogger {
     /// # Panics
     ///
-    /// yes
+    /// Panics if it fails to open the given file,
+    /// or when another logger is already installed.
     pub fn install(file_name: &str, level: Level) {
-        Self::new(file_name, level).unwrap().init();
+        Self::new(file_name, level).unwrap().init().unwrap();
     }
 
     /// # Errors
     ///
-    /// Might fail to open the log file.
+    /// Returns an `std::io::Error` if it fails to open the given file.
     pub fn new(file_name: &str, level: Level) -> std::io::Result<Self> {
         let mut path = std::env::current_exe()?;
         path.pop();
@@ -38,16 +59,19 @@ impl FileLogger {
         })
     }
 
-    /// # Panics
+    /// Installs the logger.
     ///
-    /// Panics when another logger was already initialized.
-    pub fn init(self) {
+    /// # Errors
+    ///
+    /// Returns an `log::SetLoggerError` if another one has already been installed.
+    pub fn init(self) -> Result<(), SetLoggerError> {
         let max_level = self.level.to_level_filter();
-        log::set_boxed_logger(Box::new(self)).unwrap();
+        log::set_boxed_logger(Box::new(self))?;
         log::set_max_level(max_level);
+        Ok(())
     }
 
-    pub fn write_log(&self, record: &log::Record) {
+    fn write_log(&self, record: &log::Record) {
         let message = format!("[{}] {}\n", record.level(), record.args());
         let mut writer = self.writer.lock();
         let _ = writer.write_all(message.as_bytes());

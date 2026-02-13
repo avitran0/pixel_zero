@@ -31,7 +31,6 @@ pub const ABS_HAT0Y: u16 = 0x11;
 
 pub const THRESHOLD: i32 = 16000;
 pub const DEADZONE: i32 = 8000;
-pub const NEG_DEADZONE: i32 = -DEADZONE;
 
 pub const BTN_SOUTH: u16 = 0x130;
 pub const BTN_EAST: u16 = 0x131;

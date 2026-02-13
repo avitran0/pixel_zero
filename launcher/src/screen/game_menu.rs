@@ -31,7 +31,7 @@ impl GameMenu {
                     None
                 }
             })
-            .filter_map(read_metadata)
+            .filter_map(|entry| read_metadata(entry).ok())
             .collect();
 
         log::info!(

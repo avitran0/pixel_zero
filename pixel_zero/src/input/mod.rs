@@ -24,6 +24,7 @@ struct InputEvent {
     value: i32,
 }
 
+/// Button layout similar to a Gameboy Advance.
 #[derive(Debug, Clone, Copy, EnumCount)]
 pub enum Button {
     Up,
@@ -39,10 +40,12 @@ pub enum Button {
 }
 
 impl Button {
+    /// Returns the discriminant of the variant, for usage in the state array.
     pub fn index(&self) -> usize {
         *self as usize
     }
 
+    /// Tries to construct a `Button` from an index.
     pub fn from_usize(button: usize) -> Option<Self> {
         Some(match button {
             0 => Self::Up,
@@ -63,6 +66,7 @@ impl Button {
 }
 
 const SCAN_INTERVAL: Duration = Duration::from_secs(5);
+
 pub struct Input {
     device_files: Vec<File>,
     last_scanned: Instant,
@@ -139,6 +143,8 @@ impl Input {
         byte & mask != 0
     }
 
+    /// Updates the input state.
+    /// Should be called once per game loop iteration, usually at the start.
     pub fn update(&mut self) {
         if self.last_scanned.elapsed() > SCAN_INTERVAL {
             self.device_files = Self::scan_devices();
@@ -166,31 +172,10 @@ impl Input {
                     }
                     EV_ABS => {
                         if let Some(axis_value) = Self::handle_abs_event(event) {
-                            match (axis_value.axis, axis_value.value) {
-                                (Axis::X, ..NEG_DEADZONE) => {
-                                    self.current_state[Button::Left.index()] = true;
-                                }
-                                (Axis::X, NEG_DEADZONE..DEADZONE) => {
-                                    self.current_state[Button::Left.index()] = false;
-                                    self.current_state[Button::Right.index()] = false;
-                                }
-                                (Axis::X, DEADZONE..) => {
-                                    self.current_state[Button::Right.index()] = true;
-                                }
-                                (Axis::Y, ..NEG_DEADZONE) => {
-                                    self.current_state[Button::Up.index()] = true;
-                                }
-                                (Axis::Y, NEG_DEADZONE..DEADZONE) => {
-                                    self.current_state[Button::Up.index()] = false;
-                                    self.current_state[Button::Down.index()] = false;
-                                }
-                                (Axis::Y, DEADZONE..) => {
-                                    self.current_state[Button::Down.index()] = true;
-                                }
-                            }
+                            axis_value.apply(&mut self.current_state);
                         }
                     }
-                    _ => continue,
+                    _ => {}
                 }
             }
         }
@@ -242,22 +227,27 @@ impl Input {
         })
     }
 
+    /// Whether a `Button` is pressed.
     pub fn is_pressed(&self, button: Button) -> bool {
         self.current_state[button.index()]
     }
 
+    /// Whether a `Button` was just pressed.
     pub fn just_pressed(&self, button: Button) -> bool {
         let current = self.current_state[button.index()];
         let previous = self.previous_state[button.index()];
         current && !previous
     }
 
+    /// Whether a `Button` was just released.
     pub fn just_released(&self, button: Button) -> bool {
         let current = self.current_state[button.index()];
         let previous = self.previous_state[button.index()];
         !current && previous
     }
 
+    /// Returns the internal button state.
+    /// `Button::index()` returns the index for this array.
     pub fn state(&self) -> &[bool; Button::COUNT] {
         &self.current_state
     }
@@ -269,8 +259,25 @@ struct AxisValue {
     value: i32,
 }
 
+impl AxisValue {
+    fn apply(&self, button_state: &mut [bool; Button::COUNT]) {
+        let (negative, positive) = self.axis.buttons();
+        button_state[negative.index()] = self.value <= -DEADZONE;
+        button_state[positive.index()] = self.value >= DEADZONE;
+    }
+}
+
 #[derive(Debug)]
 enum Axis {
     X,
     Y,
+}
+
+impl Axis {
+    fn buttons(&self) -> (Button, Button) {
+        match self {
+            Axis::X => (Button::Left, Button::Right),
+            Axis::Y => (Button::Up, Button::Down),
+        }
+    }
 }
