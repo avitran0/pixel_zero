@@ -16,7 +16,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum DrmError {
-    #[error("I/O Error: {0}")]
+    #[error("I/O error: {0}")]
     IO(#[from] std::io::Error),
     #[error("No Connectors found")]
     NoConnectors,

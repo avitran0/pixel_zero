@@ -20,7 +20,7 @@ use crate::{
 
 #[derive(Debug, Error)]
 pub enum FontError {
-    #[error("I/O Error: {0}")]
+    #[error("I/O error: {0}")]
     IO(#[from] std::io::Error),
     #[error("{0}")]
     Texture(#[from] TextureError),

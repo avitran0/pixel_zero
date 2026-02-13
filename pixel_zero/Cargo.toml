@@ -26,12 +26,13 @@ glow = "0.16"
 goblin = { version = "0.10", default-features = false, features = [
     "std",
     "elf64",
-    "elf32",
-    "endian_fd",
 ] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 khronos-egl = { version = "6.0", features = ["static"] }
-nix = { version = "0.31", features = ["term", "ioctl"] }
+nix = { version = "0.31", default-features = false, features = [
+    "term",
+    "ioctl",
+] }
 parking_lot = "0.12"
 strum = { version = "0.27", features = ["derive"] }
 

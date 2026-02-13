@@ -9,9 +9,9 @@ use thiserror::Error;
 pub enum TextureError {
     #[error("OpenGL error: {0}")]
     OpenGL(String),
-    #[error("I/O Error: {0}")]
+    #[error("I/O error: {0}")]
     IO(#[from] std::io::Error),
-    #[error("Image Decoding: {0}")]
+    #[error("Image decoding: {0}")]
     Image(#[from] image::ImageError),
 }
 
