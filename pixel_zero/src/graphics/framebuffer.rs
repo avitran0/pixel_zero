@@ -50,7 +50,7 @@ impl Framebuffer {
                 0,
             );
 
-            let status = gl.check_named_framebuffer_status(Some(framebuffer), glow::FRAMEBUFFER);
+            let status = gl.check_framebuffer_status(glow::FRAMEBUFFER);
             if status != glow::FRAMEBUFFER_COMPLETE {
                 return Err(FramebufferError::Shader(ShaderError::Linking(format!(
                     "Framebuffer Incomplete: 0x{status:X}"

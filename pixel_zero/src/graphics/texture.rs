@@ -39,7 +39,7 @@ impl Texture {
     }
 
     pub(crate) fn load_empty(gl: &glow::Context, size: UVec2) -> Result<Self, TextureError> {
-        let inner = TextureInner::laod_empty(gl, size)?;
+        let inner = TextureInner::load_empty(gl, size)?;
         Ok(Self(Arc::new(inner)))
     }
 
@@ -97,7 +97,7 @@ impl TextureInner {
         Ok(Self { texture, size })
     }
 
-    fn laod_empty(gl: &glow::Context, size: UVec2) -> Result<Self, TextureError> {
+    fn load_empty(gl: &glow::Context, size: UVec2) -> Result<Self, TextureError> {
         let texture = Self::create_texture(gl, size, None)?;
         Ok(Self { texture, size })
     }
@@ -135,7 +135,7 @@ impl TextureInner {
             gl.tex_image_2d(
                 glow::TEXTURE_2D,
                 0,
-                glow::RGBA.cast_signed(),
+                glow::RGBA8.cast_signed(),
                 size.x.cast_signed(),
                 size.y.cast_signed(),
                 0,
