@@ -74,6 +74,15 @@ impl Font {
     pub(crate) fn default_glyph(&self) -> &Glyph {
         &self.0.glyphs[0]
     }
+
+    pub fn text_size(&self, text: &str) -> UVec2 {
+        let mut width = 0;
+        for char in text.chars() {
+            let glyph = self.glyph(char).unwrap_or(self.default_glyph());
+            width += glyph.advance;
+        }
+        uvec2(width, self.glyph_size().y)
+    }
 }
 
 /// PSF2 Font loader and drawing

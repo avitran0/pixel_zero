@@ -9,6 +9,7 @@ pub mod io;
 pub mod log;
 pub mod meta;
 mod terminal;
+pub mod ui;
 
 pub use glam;
 
