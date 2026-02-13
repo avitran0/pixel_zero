@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 pixel_zero = { workspace = true }
 anyhow = { workspace = true }
-glam = { workspace = true }
 log = { workspace = true }
 
 [lints]

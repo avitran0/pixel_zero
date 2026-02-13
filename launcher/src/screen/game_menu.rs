@@ -1,7 +1,7 @@
 use std::fs::File;
 
-use glam::ivec2;
 use pixel_zero::{
+    glam::ivec2,
     graphics::{Font, Frame, Graphics},
     input::{Button, Input},
     io::ReadBytes as _,

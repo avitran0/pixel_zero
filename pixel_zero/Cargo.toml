@@ -13,7 +13,6 @@ lto = "fat"
 
 [dependencies]
 elf_macros = { path = "elf_macros" }
-glam = { workspace = true }
 log = { workspace = true }
 thiserror = { workspace = true }
 bytemuck = { workspace = true }
@@ -22,18 +21,18 @@ gbm = { version = "0.18", default-features = false, features = [
     "drm-support",
     "import-egl",
 ] }
-khronos-egl = { version = "6.0", features = ["static"] }
-#gl = "0.14"
+glam = "0.30"
 glow = "0.16"
-nix = { version = "0.31", features = ["term", "ioctl"] }
-image = { version = "0.25", default-features = false, features = ["png"] }
-parking_lot = "0.12"
 goblin = { version = "0.10", default-features = false, features = [
     "std",
     "elf64",
     "elf32",
     "endian_fd",
 ] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+khronos-egl = { version = "6.0", features = ["static"] }
+nix = { version = "0.31", features = ["term", "ioctl"] }
+parking_lot = "0.12"
 strum = { version = "0.27", features = ["derive"] }
 
 [lints]
