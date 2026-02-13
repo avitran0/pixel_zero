@@ -1,4 +1,5 @@
 pub const EV_KEY: u16 = 0x01;
+pub const EV_ABS: u16 = 0x03;
 
 pub const KEY_ESC: u16 = 1;
 
@@ -20,6 +21,17 @@ pub const BTN_DPAD_UP: u16 = 0x220;
 pub const BTN_DPAD_DOWN: u16 = 0x221;
 pub const BTN_DPAD_LEFT: u16 = 0x222;
 pub const BTN_DPAD_RIGHT: u16 = 0x223;
+
+// left stick
+pub const ABS_X: u16 = 0x00;
+pub const ABS_Y: u16 = 0x01;
+// dpad
+pub const ABS_HAT0X: u16 = 0x10;
+pub const ABS_HAT0Y: u16 = 0x11;
+
+pub const THRESHOLD: i32 = 16000;
+pub const DEADZONE: i32 = 8000;
+pub const NEG_DEADZONE: i32 = -DEADZONE;
 
 pub const BTN_SOUTH: u16 = 0x130;
 pub const BTN_EAST: u16 = 0x131;

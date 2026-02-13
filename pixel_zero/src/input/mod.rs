@@ -156,33 +156,90 @@ impl Input {
                     &*ptr
                 };
 
-                if event.kind != EV_KEY {
-                    continue;
-                }
+                log::info!("{event:?}");
 
-                let button = match event.code {
-                    KEY_UP | BTN_DPAD_UP => Button::Up,
-                    KEY_DOWN | BTN_DPAD_DOWN => Button::Down,
-                    KEY_LEFT | BTN_DPAD_LEFT => Button::Left,
-                    KEY_RIGHT | BTN_DPAD_RIGHT => Button::Right,
-
-                    KEY_A | BTN_SOUTH => Button::A,
-                    KEY_B | BTN_EAST => Button::B,
-                    KEY_DOT | BTN_START => Button::Start,
-                    KEY_COMMA | BTN_SELECT => Button::Select,
-                    KEY_L | BTN_TL => Button::L,
-                    KEY_R | BTN_TR => Button::R,
-
-                    KEY_ESC => std::process::exit(0),
-
+                match event.kind {
+                    EV_KEY => {
+                        if let Some((button, state)) = Self::handle_key_event(event) {
+                            self.current_state[button.index()] = state;
+                        }
+                    }
+                    EV_ABS => {
+                        if let Some(axis_value) = Self::handle_abs_event(event) {
+                            match (axis_value.axis, axis_value.value) {
+                                (Axis::X, ..NEG_DEADZONE) => {
+                                    self.current_state[Button::Left.index()] = true;
+                                }
+                                (Axis::X, NEG_DEADZONE..DEADZONE) => {
+                                    self.current_state[Button::Left.index()] = false;
+                                    self.current_state[Button::Right.index()] = false;
+                                }
+                                (Axis::X, DEADZONE..) => {
+                                    self.current_state[Button::Right.index()] = true;
+                                }
+                                (Axis::Y, ..NEG_DEADZONE) => {
+                                    self.current_state[Button::Up.index()] = true;
+                                }
+                                (Axis::Y, NEG_DEADZONE..DEADZONE) => {
+                                    self.current_state[Button::Up.index()] = false;
+                                    self.current_state[Button::Down.index()] = false;
+                                }
+                                (Axis::Y, DEADZONE..) => {
+                                    self.current_state[Button::Down.index()] = true;
+                                }
+                            }
+                        }
+                    }
                     _ => continue,
-                };
-
-                let state = event.value != 0;
-
-                self.current_state[button.index()] = state;
+                }
             }
         }
+    }
+
+    fn handle_key_event(event: &InputEvent) -> Option<(Button, bool)> {
+        let button = match event.code {
+            KEY_UP | BTN_DPAD_UP => Button::Up,
+            KEY_DOWN | BTN_DPAD_DOWN => Button::Down,
+            KEY_LEFT | BTN_DPAD_LEFT => Button::Left,
+            KEY_RIGHT | BTN_DPAD_RIGHT => Button::Right,
+
+            KEY_A | BTN_SOUTH => Button::A,
+            KEY_B | BTN_EAST => Button::B,
+            KEY_DOT | BTN_START => Button::Start,
+            KEY_COMMA | BTN_SELECT => Button::Select,
+            KEY_L | BTN_TL => Button::L,
+            KEY_R | BTN_TR => Button::R,
+
+            KEY_ESC => std::process::exit(0),
+
+            _ => return None,
+        };
+
+        let state = event.value != 0;
+
+        Some((button, state))
+    }
+
+    fn handle_abs_event(event: &InputEvent) -> Option<AxisValue> {
+        Some(match event.code {
+            ABS_X => AxisValue {
+                axis: Axis::X,
+                value: event.value,
+            },
+            ABS_Y => AxisValue {
+                axis: Axis::Y,
+                value: event.value,
+            },
+            ABS_HAT0X => AxisValue {
+                axis: Axis::X,
+                value: event.value * THRESHOLD,
+            },
+            ABS_HAT0Y => AxisValue {
+                axis: Axis::Y,
+                value: event.value * THRESHOLD,
+            },
+            _ => return None,
+        })
     }
 
     pub fn is_pressed(&self, button: Button) -> bool {
@@ -204,4 +261,16 @@ impl Input {
     pub fn state(&self) -> &[bool; Button::COUNT] {
         &self.current_state
     }
+}
+
+#[derive(Debug)]
+struct AxisValue {
+    axis: Axis,
+    value: i32,
+}
+
+#[derive(Debug)]
+enum Axis {
+    X,
+    Y,
 }
