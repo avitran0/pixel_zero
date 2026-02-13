@@ -13,9 +13,9 @@ lto = "fat"
 
 [dependencies]
 elf_macros = { path = "elf_macros" }
+bytemuck = { workspace = true }
 log = { workspace = true }
 thiserror = { workspace = true }
-bytemuck = { workspace = true }
 drm = "0.14"
 gbm = { version = "0.18", default-features = false, features = [
     "drm-support",
@@ -26,6 +26,8 @@ glow = "0.16"
 goblin = { version = "0.10", default-features = false, features = [
     "std",
     "elf64",
+    "elf32",
+    "endian_fd"
 ] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 khronos-egl = { version = "6.0", features = ["static"] }
