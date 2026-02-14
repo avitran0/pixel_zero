@@ -2,7 +2,7 @@ use std::fs::File;
 
 use pixel_zero::{
     glam::ivec2,
-    graphics::{Font, Frame, Graphics},
+    graphics::{Color, Font, Frame, Graphics},
     input::{Button, Input},
     io::ReadBytes as _,
     meta::{GameInfo, read_metadata},
@@ -68,5 +68,7 @@ impl Screen for GameMenu {
                 offset += font.glyph_size().y.cast_signed();
             }
         }
+
+        frame.draw_line(ivec2(50, 50), ivec2(60, 75), Color::WHITE);
     }
 }

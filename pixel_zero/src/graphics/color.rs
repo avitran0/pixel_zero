@@ -1,4 +1,4 @@
-use glam::{Vec3, vec3};
+use glam::{Vec3, Vec4, vec3, vec4};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Color {
@@ -47,6 +47,11 @@ impl Color {
         self.f32().vec3()
     }
 
+    #[must_use]
+    pub fn vec4(&self) -> Vec4 {
+        self.f32().vec4()
+    }
+
     pub(crate) fn f32(self) -> ColorF32 {
         ColorF32 {
             r: f32::from(self.r) / 255.0,
@@ -65,23 +70,27 @@ pub(crate) struct ColorF32 {
 }
 
 impl ColorF32 {
-    pub fn r(&self) -> f32 {
+    pub(crate) fn r(&self) -> f32 {
         self.r
     }
 
-    pub fn g(&self) -> f32 {
+    pub(crate) fn g(&self) -> f32 {
         self.g
     }
 
-    pub fn b(&self) -> f32 {
+    pub(crate) fn b(&self) -> f32 {
         self.b
     }
 
-    pub fn a(&self) -> f32 {
+    pub(crate) fn a(&self) -> f32 {
         self.a
     }
 
-    pub fn vec3(&self) -> Vec3 {
+    pub(crate) fn vec3(&self) -> Vec3 {
         vec3(self.r, self.g, self.b)
+    }
+
+    pub(crate) fn vec4(&self) -> Vec4 {
+        vec4(self.r, self.g, self.b, self.a)
     }
 }

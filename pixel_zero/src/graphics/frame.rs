@@ -1,4 +1,4 @@
-use glam::IVec2;
+use glam::{IVec2, UVec2};
 
 use crate::graphics::{Color, Font, Sprite};
 
@@ -20,6 +20,33 @@ impl Frame {
             font: font.clone(),
             text: text.to_owned(),
             position,
+        });
+    }
+
+    pub fn draw_rect(&mut self, position: IVec2, size: UVec2, color: Color) {
+        self.draw_commands.push(DrawCommand::Rect {
+            position,
+            size,
+            color,
+            filled: true,
+        });
+    }
+
+    pub fn draw_rect_outline(&mut self, position: IVec2, size: UVec2, color: Color) {
+        self.draw_commands.push(DrawCommand::Rect {
+            position,
+            size,
+            color,
+            filled: false,
+        });
+    }
+
+    pub fn draw_line(&mut self, start: IVec2, end: IVec2, color: Color) {
+        self.draw_commands.push(DrawCommand::Line {
+            start,
+            end,
+            width: 1,
+            color,
         });
     }
 
@@ -54,5 +81,17 @@ pub(crate) enum DrawCommand {
         font: Font,
         text: String,
         position: IVec2,
+    },
+    Line {
+        start: IVec2,
+        end: IVec2,
+        width: u32,
+        color: Color,
+    },
+    Rect {
+        position: IVec2,
+        size: UVec2,
+        color: Color,
+        filled: bool,
     },
 }

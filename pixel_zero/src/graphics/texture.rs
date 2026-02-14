@@ -55,6 +55,7 @@ impl Texture {
         }
     }
 
+    #[must_use]
     pub fn size(&self) -> UVec2 {
         self.0.size
     }

@@ -33,6 +33,7 @@ pub mod font;
 pub mod frame;
 mod framebuffer;
 mod gbm;
+pub mod line;
 mod quad;
 mod shader;
 pub mod sprite;

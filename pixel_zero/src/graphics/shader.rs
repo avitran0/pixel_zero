@@ -93,7 +93,7 @@ impl Shader {
     pub fn attributes(&self, gl: &glow::Context, attributes: &[VertexAttribute]) {
         let stride = attributes
             .iter()
-            .map(VertexAttribute::size_bytes)
+            .map(|attr| VertexAttribute::size_bytes(*attr))
             .reduce(|acc, e| acc + e)
             .unwrap() as i32;
 
@@ -164,7 +164,7 @@ pub(crate) enum VertexAttribute {
 }
 
 impl VertexAttribute {
-    fn gl_size(&self) -> i32 {
+    fn gl_size(self) -> i32 {
         match self {
             Self::Float => 1,
             Self::Vec2 => 2,
@@ -173,7 +173,7 @@ impl VertexAttribute {
         }
     }
 
-    fn size_bytes(&self) -> usize {
+    fn size_bytes(self) -> usize {
         match self {
             Self::Float => size_of::<f32>(),
             Self::Vec2 => size_of::<Vec2>(),
