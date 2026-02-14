@@ -186,7 +186,7 @@ impl Framebuffer {
                     if *filled {
                         self.draw_rect_filled(gl, *position, *size, *color);
                     } else {
-                        self.draw_rect(gl, *position, *size, color);
+                        self.draw_rect(gl, *position, *size, *color);
                     }
                 }
             }
@@ -269,7 +269,7 @@ impl Framebuffer {
         self.line.draw(gl);
     }
 
-    fn draw_rect(&self, gl: &glow::Context, position: IVec2, size: UVec2, color: &Color) {
+    fn draw_rect(&self, gl: &glow::Context, position: IVec2, size: UVec2, color: Color) {
         self.shape_shader.bind(gl);
         self.line.bind_vao(gl);
 
