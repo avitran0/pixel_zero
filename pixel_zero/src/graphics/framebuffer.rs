@@ -92,7 +92,6 @@ impl Framebuffer {
         Quad::unbind_vbo(gl);
 
         unsafe {
-            // gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
             gl.active_texture(glow::TEXTURE0);
             gl.enable(glow::BLEND);
             gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);

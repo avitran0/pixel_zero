@@ -162,8 +162,6 @@ impl Input {
                     &*ptr
                 };
 
-                log::info!("{event:?}");
-
                 match event.kind {
                     EV_KEY => {
                         if let Some((button, state)) = Self::handle_key_event(event) {
