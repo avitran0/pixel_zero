@@ -16,4 +16,4 @@ pub use glam;
 /// Framebuffer width
 pub const WIDTH: u32 = 320;
 /// Framebuffer  height
-pub const HEIGHT: u32 = 240;
+pub const HEIGHT: u32 = 180;

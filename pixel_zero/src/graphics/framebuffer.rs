@@ -1,4 +1,4 @@
-use glam::{IVec2, Mat4, UVec2, Vec2, ivec2, uvec2};
+use glam::{IVec2, Mat4, UVec2, Vec2, ivec2, uvec2, vec2};
 use glow::{HasContext, NativeFramebuffer};
 use thiserror::Error;
 
@@ -105,6 +105,11 @@ impl Framebuffer {
 
         screen_shader.bind(gl);
         screen_shader.set_uniform(gl, "u_screen_size", Uniform::Vec2(screen_size.as_vec2()));
+        screen_shader.set_uniform(
+            gl,
+            "u_framebuffer_size",
+            Uniform::Vec2(vec2(WIDTH as f32, HEIGHT as f32)),
+        );
         screen_shader.set_uniform(gl, "u_texture", Uniform::Int(0));
 
         Shader::unbind(gl);
@@ -115,6 +120,8 @@ impl Framebuffer {
             gl.active_texture(glow::TEXTURE0);
             gl.enable(glow::BLEND);
             gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+            gl.disable(glow::LINE_SMOOTH);
+            gl.disable(glow::POLYGON_SMOOTH);
         }
 
         Ok(Self {

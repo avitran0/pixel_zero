@@ -3,14 +3,13 @@ precision mediump float;
 varying vec2 v_texcoord;
 
 uniform vec2 u_screen_size;
+uniform vec2 u_framebuffer_size;
 uniform sampler2D u_texture;
 
-float width = 320.0;
-float height = 240.0;
 vec4 letterbox_color = vec4(0.0, 0.0, 0.0, 1.0);
 
 void main() {
-    float target_aspect = width / height;
+    float target_aspect = u_framebuffer_size.x / u_framebuffer_size.y;
     float screen_aspect = u_screen_size.x / u_screen_size.y;
 
     vec2 uv = v_texcoord;

@@ -1,7 +1,7 @@
 use std::fs::File;
 
 use pixel_zero::{
-    glam::ivec2,
+    glam::{ivec2, uvec2},
     graphics::{Color, Font, Frame, Graphics},
     input::{Button, Input},
     io::ReadBytes as _,
@@ -55,7 +55,7 @@ impl Screen for GameMenu {
     }
 
     fn render(&self, frame: &mut Frame, font: &Font) {
-        let mut offset = 20;
+        let mut offset = 50;
         for game in &self.games {
             frame.draw_text(font, &game.name, ivec2(0, offset));
             offset += font.glyph_size().y.cast_signed();
@@ -69,6 +69,20 @@ impl Screen for GameMenu {
             }
         }
 
-        frame.draw_line(ivec2(0, 0), ivec2(3, 3), Color::WHITE);
+        let mut offset = 0;
+        for i in (0..15).rev() {
+            frame.draw_line(ivec2(offset, 20), ivec2(offset + i, 20 + i), Color::WHITE);
+            offset += 4;
+        }
+
+        offset = 0;
+        for i in (0..15).rev() {
+            frame.draw_rect_outline(
+                ivec2(offset, 0),
+                uvec2(i as u32 + 1, i as u32 + 1),
+                Color::WHITE,
+            );
+            offset += i + 3;
+        }
     }
 }
