@@ -54,6 +54,10 @@ impl Frame {
         self.draw_commands.push(command);
     }
 
+    pub(crate) fn add_commands(&mut self, commands: Vec<DrawCommand>) {
+        self.draw_commands.extend(commands);
+    }
+
     pub(crate) fn clear_color(&self) -> Color {
         self.clear_color
     }

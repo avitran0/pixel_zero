@@ -4,6 +4,7 @@ use pixel_zero::{
 };
 
 pub mod game_menu;
+pub mod main_menu;
 
 pub trait Screen {
     fn update(&mut self, input: &Input);
