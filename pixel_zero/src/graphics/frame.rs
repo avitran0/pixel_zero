@@ -54,6 +54,10 @@ impl Frame {
         self.clear_color = color;
     }
 
+    pub(crate) fn add_command(&mut self, command: DrawCommand) {
+        self.draw_commands.push(command);
+    }
+
     pub(crate) fn clear_color(&self) -> Color {
         self.clear_color
     }

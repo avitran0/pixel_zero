@@ -1,18 +1,19 @@
-use crate::graphics::Font;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
-pub struct Ui {
-    id_stack: Vec<Id>,
-}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Id(u64);
 
-impl Ui {
-    pub fn label(&mut self, font: &Font, text: &str) {
-        let text_size = font.text_size(text);
+impl Id {
+    pub fn new(source: impl Hash) -> Self {
+        let mut hasher = DefaultHasher::new();
+        source.hash(&mut hasher);
+        Self(hasher.finish())
     }
 }
 
-pub struct Context {
-    focus: Option<Id>,
-    active: Option<Id>,
-}
+pub struct Context {}
 
-struct Id(u64);
+impl Context {}
+
+pub struct Ui {}

@@ -55,7 +55,7 @@ impl Screen for GameMenu {
     }
 
     fn render(&self, frame: &mut Frame, font: &Font) {
-        let mut offset = 0;
+        let mut offset = 20;
         for game in &self.games {
             frame.draw_text(font, &game.name, ivec2(0, offset));
             offset += font.glyph_size().y.cast_signed();
@@ -69,6 +69,6 @@ impl Screen for GameMenu {
             }
         }
 
-        frame.draw_line(ivec2(50, 50), ivec2(60, 75), Color::WHITE);
+        frame.draw_line(ivec2(0, 0), ivec2(3, 3), Color::WHITE);
     }
 }

@@ -257,8 +257,13 @@ impl Framebuffer {
         self.shape_shader
             .set_uniform(gl, "u_color", Uniform::Vec4(color.vec4()));
 
-        let start_f = start.as_vec2();
+        let mut start_f = start.as_vec2();
         let end_f = end.as_vec2();
+
+        if start.x == end.x || start.y == end.y {
+            start_f += 0.5;
+        }
+
         let size = end_f - start_f;
 
         self.shape_shader
@@ -276,8 +281,8 @@ impl Framebuffer {
         self.shape_shader
             .set_uniform(gl, "u_color", Uniform::Vec4(color.vec4()));
 
-        let x = position.x as f32;
-        let y = position.y as f32;
+        let x = position.x as f32 + 0.5;
+        let y = position.y as f32 + 0.5;
         let w = size.x as f32;
         let h = size.y as f32;
 
@@ -288,25 +293,25 @@ impl Framebuffer {
             .set_uniform(gl, "u_size", Uniform::Vec2(Vec2::new(w, 0.0)));
         self.line.draw(gl);
 
-        // bottom: (x, y + h) -> (x + w, y + h)
-        self.shape_shader
-            .set_uniform(gl, "u_position", Uniform::Vec2(Vec2::new(x, y + h)));
-        self.shape_shader
-            .set_uniform(gl, "u_size", Uniform::Vec2(Vec2::new(w, 0.0)));
-        self.line.draw(gl);
-
-        // left: (x, y) -> (x, y + h)
-        self.shape_shader
-            .set_uniform(gl, "u_position", Uniform::Vec2(Vec2::new(x, y)));
-        self.shape_shader
-            .set_uniform(gl, "u_size", Uniform::Vec2(Vec2::new(0.0, h)));
-        self.line.draw(gl);
-
         // right: (x + w, y) -> (x + w, y + h)
         self.shape_shader
             .set_uniform(gl, "u_position", Uniform::Vec2(Vec2::new(x + w, y)));
         self.shape_shader
             .set_uniform(gl, "u_size", Uniform::Vec2(Vec2::new(0.0, h)));
+        self.line.draw(gl);
+
+        // bottom: (x, y + h) -> (x + w, y + h)
+        self.shape_shader
+            .set_uniform(gl, "u_position", Uniform::Vec2(Vec2::new(x + w, y + h)));
+        self.shape_shader
+            .set_uniform(gl, "u_size", Uniform::Vec2(Vec2::new(-w, 0.0)));
+        self.line.draw(gl);
+
+        // left: (x, y) -> (x, y + h)
+        self.shape_shader
+            .set_uniform(gl, "u_position", Uniform::Vec2(Vec2::new(x, y + h)));
+        self.shape_shader
+            .set_uniform(gl, "u_size", Uniform::Vec2(Vec2::new(0.0, -h)));
         self.line.draw(gl);
     }
 
