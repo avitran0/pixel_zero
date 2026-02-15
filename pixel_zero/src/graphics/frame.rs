@@ -42,12 +42,8 @@ impl Frame {
     }
 
     pub fn draw_line(&mut self, start: IVec2, end: IVec2, color: Color) {
-        self.draw_commands.push(DrawCommand::Line {
-            start,
-            end,
-            width: 1,
-            color,
-        });
+        self.draw_commands
+            .push(DrawCommand::Line { start, end, color });
     }
 
     pub fn set_clear_color(&mut self, color: Color) {
@@ -89,7 +85,6 @@ pub(crate) enum DrawCommand {
     Line {
         start: IVec2,
         end: IVec2,
-        width: u32,
         color: Color,
     },
     Rect {

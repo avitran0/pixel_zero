@@ -7,7 +7,7 @@ pub(crate) struct Line {
 }
 
 impl Line {
-    const VERTEX_DATA: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+    const VERTEX_DATA: [f32; 8] = [0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0];
 
     pub fn new(gl: &glow::Context) -> Result<Self, String> {
         let vao = unsafe { gl.create_vertex_array()? };
@@ -41,7 +41,7 @@ impl Line {
 
     pub fn draw(&self, gl: &glow::Context) {
         unsafe {
-            gl.draw_arrays(glow::LINES, 0, 2);
+            gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
         }
     }
 }

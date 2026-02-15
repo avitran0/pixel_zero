@@ -1,18 +1,18 @@
-use glam::{IVec2, Mat4, UVec2, Vec2, ivec2, uvec2, vec2};
+use glam::{ivec2, uvec2, vec2, IVec2, Mat4, UVec2};
 use glow::{HasContext, NativeFramebuffer};
 use thiserror::Error;
 
 use crate::{
-    HEIGHT, WIDTH,
     graphics::{
-        Font, Sprite,
         color::Color,
         frame::{DrawCommand, Frame},
         line::Line,
         quad::Quad,
         shader::{Shader, ShaderError, Uniform, VertexAttribute},
         texture::{Texture, TextureError},
+        Font, Sprite,
     },
+    HEIGHT, WIDTH,
 };
 
 #[derive(Debug, Error)]
@@ -176,13 +176,8 @@ impl Framebuffer {
                 } => {
                     self.draw_text(gl, font, text, *position);
                 }
-                DrawCommand::Line {
-                    start,
-                    end,
-                    width,
-                    color,
-                } => {
-                    self.draw_line(gl, *start, *end, *width, *color);
+                DrawCommand::Line { start, end, color } => {
+                    self.draw_line(gl, *start, *end, *color);
                 }
                 DrawCommand::Rect {
                     position,
@@ -257,7 +252,30 @@ impl Framebuffer {
         }
     }
 
-    fn draw_line(&self, gl: &glow::Context, start: IVec2, end: IVec2, _width: u32, color: Color) {
+    fn draw_line(&self, gl: &glow::Context, start: IVec2, end: IVec2, color: Color) {
+        if start == end {
+            self.draw_rect_filled(gl, start, uvec2(1, 1), color);
+            return;
+        }
+
+        // vertical
+        if start.x == end.x {
+            let y0 = start.y.min(end.y);
+            let y1 = start.y.max(end.y);
+            let height = (y1 - y0 + 1) as u32;
+            self.draw_rect_filled(gl, ivec2(start.x, y0), uvec2(1, height), color);
+            return;
+        }
+
+        // horizontal
+        if start.y == end.y {
+            let x0 = start.x.min(end.x);
+            let x1 = start.x.max(end.x);
+            let width = (x1 - x0 + 1) as u32;
+            self.draw_rect_filled(gl, ivec2(x0, start.y), uvec2(width, 1), color);
+            return;
+        }
+
         self.shape_shader.bind(gl);
         self.line.bind_vao(gl);
 
@@ -265,61 +283,50 @@ impl Framebuffer {
             .set_uniform(gl, "u_color", Uniform::Vec4(color.vec4()));
 
         let start_f = start.as_vec2() + vec2(0.5, 0.5);
-        let end_f = end.as_vec2();
+        let end_f = end.as_vec2() + vec2(0.5, 0.5);
+        let delta = end_f - start_f;
+        let length = delta.length();
 
-        let size = end_f - start_f;
+        if length == 0.0 {
+            self.draw_rect_filled(gl, start, uvec2(1, 1), color);
+            return;
+        }
+
+        let unit = delta / length;
+        let normal = vec2(-unit.y, unit.x);
+        let size = vec2(length + 1.0, 1.0);
+        let origin = start_f - unit * 0.5 - normal * 0.5;
 
         self.shape_shader
-            .set_uniform(gl, "u_position", Uniform::Vec2(start_f));
+            .set_uniform(gl, "u_position", Uniform::Vec2(origin));
         self.shape_shader
             .set_uniform(gl, "u_size", Uniform::Vec2(size));
+        self.shape_shader
+            .set_uniform(gl, "u_line_unit", Uniform::Vec2(unit));
+        self.shape_shader
+            .set_uniform(gl, "u_line_normal", Uniform::Vec2(normal));
+        self.shape_shader
+            .set_uniform(gl, "u_line_length", Uniform::Float(length + 1.0));
 
         self.line.draw(gl);
     }
 
     fn draw_rect(&self, gl: &glow::Context, position: IVec2, size: UVec2, color: Color) {
-        self.shape_shader.bind(gl);
-        self.line.bind_vao(gl);
-
-        self.shape_shader
-            .set_uniform(gl, "u_color", Uniform::Vec4(color.vec4()));
+        if size.x == 0 || size.y == 0 {
+            return;
+        }
 
         if (size.x == 1 && size.y == 1) || (size.x == 2 && size.y == 2) {
             self.draw_rect_filled(gl, position, size, color);
+            return;
         }
 
-        let x = position.x as f32 + 0.5;
-        let y = position.y as f32 + 0.5;
-        let w = size.x as f32;
-        let h = size.y as f32;
+        let bottom_right = position + ivec2(size.x as i32 - 1, size.y as i32 - 1);
 
-        // top: (x, y) -> (x + w, y)
-        self.shape_shader
-            .set_uniform(gl, "u_position", Uniform::Vec2(Vec2::new(x, y)));
-        self.shape_shader
-            .set_uniform(gl, "u_size", Uniform::Vec2(Vec2::new(w, 0.0)));
-        self.line.draw(gl);
-
-        // right: (x + w, y) -> (x + w, y + h)
-        self.shape_shader
-            .set_uniform(gl, "u_position", Uniform::Vec2(Vec2::new(x + w - 1.0, y)));
-        self.shape_shader
-            .set_uniform(gl, "u_size", Uniform::Vec2(Vec2::new(0.0, h)));
-        self.line.draw(gl);
-
-        // bottom: (x, y + h) -> (x + w, y + h)
-        self.shape_shader
-            .set_uniform(gl, "u_position", Uniform::Vec2(Vec2::new(x, y + h - 1.0)));
-        self.shape_shader
-            .set_uniform(gl, "u_size", Uniform::Vec2(Vec2::new(w, 0.0)));
-        self.line.draw(gl);
-
-        // left: (x, y) -> (x, y + h)
-        self.shape_shader
-            .set_uniform(gl, "u_position", Uniform::Vec2(Vec2::new(x, y)));
-        self.shape_shader
-            .set_uniform(gl, "u_size", Uniform::Vec2(Vec2::new(0.0, h)));
-        self.line.draw(gl);
+        self.draw_line(gl, position, ivec2(bottom_right.x, position.y), color);
+        self.draw_line(gl, ivec2(bottom_right.x, position.y), bottom_right, color);
+        self.draw_line(gl, ivec2(position.x, bottom_right.y), bottom_right, color);
+        self.draw_line(gl, position, ivec2(position.x, bottom_right.y), color);
     }
 
     fn draw_rect_filled(&self, gl: &glow::Context, position: IVec2, size: UVec2, color: Color) {
@@ -333,6 +340,12 @@ impl Framebuffer {
             .set_uniform(gl, "u_position", Uniform::Vec2(position.as_vec2()));
         self.shape_shader
             .set_uniform(gl, "u_size", Uniform::Vec2(size.as_vec2()));
+        self.shape_shader
+            .set_uniform(gl, "u_line_unit", Uniform::Vec2(vec2(1.0, 0.0)));
+        self.shape_shader
+            .set_uniform(gl, "u_line_normal", Uniform::Vec2(vec2(0.0, size.y as f32)));
+        self.shape_shader
+            .set_uniform(gl, "u_line_length", Uniform::Float(size.x as f32));
 
         self.quad.draw(gl);
     }
