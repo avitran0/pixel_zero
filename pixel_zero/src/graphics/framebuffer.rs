@@ -298,13 +298,15 @@ impl Framebuffer {
         let h = size.y as f32 - 1.0;
 
         // top: (x, y) -> (x + w, y)
+        // too short on the right
         self.shape_shader
             .set_uniform(gl, "u_position", Uniform::Vec2(Vec2::new(x, y)));
         self.shape_shader
             .set_uniform(gl, "u_size", Uniform::Vec2(Vec2::new(w, 0.0)));
-        //self.line.draw(gl);
+        self.line.draw(gl);
 
         // right: (x + w, y) -> (x + w, y + h)
+        // one pixel missing on the top
         self.shape_shader
             .set_uniform(gl, "u_position", Uniform::Vec2(Vec2::new(x + w, y)));
         self.shape_shader
@@ -312,13 +314,15 @@ impl Framebuffer {
         self.line.draw(gl);
 
         // bottom: (x, y + h) -> (x + w, y + h)
+        // also too short on the right
         self.shape_shader
             .set_uniform(gl, "u_position", Uniform::Vec2(Vec2::new(x + w, y + h)));
         self.shape_shader
             .set_uniform(gl, "u_size", Uniform::Vec2(Vec2::new(-w, 0.0)));
-        //self.line.draw(gl);
+        self.line.draw(gl);
 
         // left: (x, y) -> (x, y + h)
+        // one pixel missing on the top
         self.shape_shader
             .set_uniform(gl, "u_position", Uniform::Vec2(Vec2::new(x, y + h)));
         self.shape_shader
