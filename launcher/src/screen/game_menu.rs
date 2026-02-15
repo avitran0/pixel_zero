@@ -104,5 +104,7 @@ impl Screen for GameMenu {
             );
             line_offset += 2;
         }
+
+        frame.draw_line(ivec2(90, 90), ivec2(90, 90), Color::WHITE);
     }
 }
