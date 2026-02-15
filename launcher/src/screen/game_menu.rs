@@ -55,23 +55,23 @@ impl Screen for GameMenu {
     }
 
     fn render(&self, frame: &mut Frame, font: &Font) {
-        let mut offset = 50;
+        let mut offset = 0;
         for game in &self.games {
-            frame.draw_text(font, &game.name, ivec2(0, offset));
+            frame.draw_text(font, &game.name, ivec2(200, offset));
             offset += font.glyph_size().y.cast_signed();
         }
 
         for (index, button) in self.button_state.iter().enumerate() {
             if *button {
                 let button = Button::from_usize(index).unwrap();
-                frame.draw_text(font, &format!("{button:?}"), ivec2(0, offset));
+                frame.draw_text(font, &format!("{button:?}"), ivec2(200, offset));
                 offset += font.glyph_size().y.cast_signed();
             }
         }
 
         let mut offset = 0;
         for i in (0..15).rev() {
-            frame.draw_line(ivec2(offset, 20), ivec2(offset + i, 20 + i), Color::WHITE);
+            frame.draw_line(ivec2(offset, 50), ivec2(offset + i, 50 + i), Color::WHITE);
             offset += 4;
         }
 
@@ -82,7 +82,27 @@ impl Screen for GameMenu {
                 uvec2(i as u32 + 1, i as u32 + 1),
                 Color::WHITE,
             );
+            frame.draw_rect(
+                ivec2(offset, 20),
+                uvec2(i as u32 + 1, i as u32 + 1),
+                Color::WHITE,
+            );
             offset += i + 3;
+        }
+
+        let mut line_offset = 0;
+        for i in (0..15).rev() {
+            frame.draw_line(
+                ivec2(line_offset, 70),
+                ivec2(line_offset, 70 + i),
+                Color::WHITE,
+            );
+            frame.draw_line(
+                ivec2(0, 90 + line_offset),
+                ivec2(i, 90 + line_offset),
+                Color::WHITE,
+            );
+            line_offset += 2;
         }
     }
 }
