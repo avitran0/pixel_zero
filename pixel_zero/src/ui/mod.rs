@@ -1,5 +1,10 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
+
+use parking_lot::Mutex;
+
+use crate::graphics::Graphics;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Id(u64);
@@ -12,8 +17,26 @@ impl Id {
     }
 }
 
-pub struct Context {}
+#[derive(Debug, Clone)]
+pub struct Ui(Arc<Mutex<UiInner>>);
 
-impl Context {}
+impl Ui {
+    pub fn start_frame(&self) -> UiFrame {
+        UiFrame {
+            context: self.clone(),
+        }
+    }
+}
 
-pub struct Ui {}
+#[derive(Debug)]
+pub struct UiInner {}
+
+impl UiInner {}
+
+pub struct UiFrame {
+    context: Ui,
+}
+
+impl UiFrame {
+    pub fn render(self, graphics: &Graphics) {}
+}
