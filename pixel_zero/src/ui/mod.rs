@@ -290,7 +290,7 @@ impl UiFrame {
         changed
     }
 
-    pub fn render(self, frame: &mut Frame) {
+    pub fn render(&self, frame: &mut Frame) {
         let widget_count = self.widget_index;
         let mut inner = self.context.0.lock();
         if widget_count > 0 {
@@ -299,7 +299,7 @@ impl UiFrame {
             inner.focus_index = 0;
         }
         inner.last_widget_count = widget_count;
-        frame.add_commands(self.draw_commands);
+        frame.add_commands(&self.draw_commands);
     }
 
     fn button_size(&self) -> UVec2 {

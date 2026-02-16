@@ -3,7 +3,7 @@ use pixel_zero::{
     input::{Button, Input},
 };
 
-use crate::screen::{Screen, game_menu::GameMenu, main_menu::MainMenu};
+use crate::screen::{Screen, main_menu::MainMenu};
 
 pub struct Launcher {
     graphics: Graphics,

@@ -54,8 +54,8 @@ impl Frame {
         self.draw_commands.push(command);
     }
 
-    pub(crate) fn add_commands(&mut self, commands: Vec<DrawCommand>) {
-        self.draw_commands.extend(commands);
+    pub(crate) fn add_commands(&mut self, commands: &[DrawCommand]) {
+        self.draw_commands.extend_from_slice(commands);
     }
 
     pub(crate) fn clear_color(&self) -> Color {
@@ -76,6 +76,7 @@ impl Default for Frame {
     }
 }
 
+#[derive(Debug, Clone)]
 pub(crate) enum DrawCommand {
     Sprite {
         sprite: Sprite,
