@@ -247,11 +247,12 @@ impl UiInner {
             self.draw_focus_outline(layout.position + outline_offset, outline_size);
         }
 
-        let mut changed = false;
-        if is_focused && self.input.just_pressed(Button::A) {
+        let changed = if is_focused && self.input.just_pressed(Button::A) {
             *value = !*value;
-            changed = true;
-        }
+            true
+        } else {
+            false
+        };
 
         self.widget_index += 1;
         changed
@@ -276,10 +277,11 @@ impl UiInner {
             self.draw_focus_outline(position, size);
         }
 
-        let mut changed = false;
-        if is_focused {
-            changed = apply_step_input(&self.input, value, range, speed);
-        }
+        let changed = if is_focused {
+            apply_step_input(&self.input, value, range, speed)
+        } else {
+            false
+        };
 
         self.widget_index += 1;
         changed
