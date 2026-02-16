@@ -219,7 +219,9 @@ impl UiInner {
             let width = (size as i32 + self.style.spacing + text_size.x as i32)
                 .min(self.layout_width as i32)
                 .max(size as i32);
-            self.draw_focus_outline(position, uvec2(width as u32, row_height as u32));
+            let outline_offset = ivec2(-1, -1);
+            let outline_size = uvec2((width + 2) as u32, (row_height + 1) as u32);
+            self.draw_focus_outline(position + outline_offset, outline_size);
         }
 
         let mut changed = false;
