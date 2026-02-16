@@ -31,11 +31,13 @@ pub enum Button {
 
 impl Button {
     /// Returns the discriminant of the variant, for usage in the state array.
+    #[must_use]
     pub fn index(&self) -> usize {
         *self as usize
     }
 
     /// Tries to construct a `Button` from an index.
+    #[must_use]
     pub fn from_usize(button: usize) -> Option<Self> {
         Some(match button {
             0 => Self::Up,
@@ -144,11 +146,13 @@ impl Input {
     }
 
     /// Whether a `Button` is pressed.
+    #[must_use]
     pub fn is_pressed(&self, button: Button) -> bool {
         self.current_state[button.index()]
     }
 
     /// Whether a `Button` was just pressed.
+    #[must_use]
     pub fn just_pressed(&self, button: Button) -> bool {
         let current = self.current_state[button.index()];
         let previous = self.previous_state[button.index()];
@@ -156,6 +160,7 @@ impl Input {
     }
 
     /// Whether a `Button` was just released.
+    #[must_use]
     pub fn just_released(&self, button: Button) -> bool {
         let current = self.current_state[button.index()];
         let previous = self.previous_state[button.index()];
@@ -164,6 +169,7 @@ impl Input {
 
     /// Returns the internal button state.
     /// `Button::index()` returns the index for this array.
+    #[must_use]
     pub fn state(&self) -> &[bool; Button::COUNT] {
         &self.current_state
     }
@@ -251,28 +257,28 @@ impl Device {
 
     fn read_abs_x(&self) -> Option<i32> {
         let mut info = InputAbsInfo::default();
-        unsafe { abs_x(self.file.as_raw_fd(), &mut info) }
+        unsafe { abs_x(self.file.as_raw_fd(), &raw mut info) }
             .ok()
             .map(|_| info.value)
     }
 
     fn read_abs_y(&self) -> Option<i32> {
         let mut info = InputAbsInfo::default();
-        unsafe { abs_y(self.file.as_raw_fd(), &mut info) }
+        unsafe { abs_y(self.file.as_raw_fd(), &raw mut info) }
             .ok()
             .map(|_| info.value)
     }
 
     fn read_abs_hat0x(&self) -> Option<i32> {
         let mut info = InputAbsInfo::default();
-        unsafe { abs_hat0x(self.file.as_raw_fd(), &mut info) }
+        unsafe { abs_hat0x(self.file.as_raw_fd(), &raw mut info) }
             .ok()
             .map(|_| info.value)
     }
 
     fn read_abs_hat0y(&self) -> Option<i32> {
         let mut info = InputAbsInfo::default();
-        unsafe { abs_hat0y(self.file.as_raw_fd(), &mut info) }
+        unsafe { abs_hat0y(self.file.as_raw_fd(), &raw mut info) }
             .ok()
             .map(|_| info.value)
     }
@@ -297,10 +303,10 @@ impl DeviceKind {
         let has_keys = unsafe { key_state(file.as_raw_fd(), &mut bits) }.is_ok();
 
         let mut info = InputAbsInfo::default();
-        let has_abs = unsafe { abs_x(file.as_raw_fd(), &mut info) }.is_ok()
-            || unsafe { abs_y(file.as_raw_fd(), &mut info) }.is_ok()
-            || unsafe { abs_hat0x(file.as_raw_fd(), &mut info) }.is_ok()
-            || unsafe { abs_hat0y(file.as_raw_fd(), &mut info) }.is_ok();
+        let has_abs = unsafe { abs_x(file.as_raw_fd(), &raw mut info) }.is_ok()
+            || unsafe { abs_y(file.as_raw_fd(), &raw mut info) }.is_ok()
+            || unsafe { abs_hat0x(file.as_raw_fd(), &raw mut info) }.is_ok()
+            || unsafe { abs_hat0y(file.as_raw_fd(), &raw mut info) }.is_ok();
 
         match (has_keys, has_abs) {
             (true, true) => Some(Self::KeysAndAbs),

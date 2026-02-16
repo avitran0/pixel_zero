@@ -28,6 +28,7 @@ impl Id {
 pub struct Ui(Arc<Mutex<UiInner>>);
 
 impl Ui {
+    #[must_use]
     pub fn new(font: Font) -> Self {
         Self(Arc::new(Mutex::new(UiInner::new(font))))
     }
@@ -52,7 +53,7 @@ impl Ui {
         inner.frame_focus_index = focus_index;
         inner.widget_index = 0;
         inner.cursor = ivec2(inner.style.padding, inner.style.padding);
-        inner.layout_width = WIDTH.saturating_sub((inner.style.padding * 2).max(0) as u32);
+        inner.layout_width = WIDTH.saturating_sub((inner.style.padding * 2).max(0).cast_unsigned());
         inner.draw_commands.clear();
     }
 
@@ -98,6 +99,7 @@ impl Ui {
         frame.add_commands(&inner.draw_commands);
     }
 
+    #[must_use]
     pub fn font(&self) -> Font {
         self.0.lock().font.clone()
     }
@@ -142,7 +144,7 @@ impl UiInner {
             text: text.to_owned(),
             position,
         });
-        let height = self.font.glyph_size().y as i32;
+        let height = self.font.glyph_size().y.cast_signed();
         self.advance(height + self.style.spacing);
     }
 
@@ -171,8 +173,10 @@ impl UiInner {
         });
 
         let text_size = self.font.text_size(text);
-        let text_x = position.x + ((button_size.x as i32 - text_size.x as i32) / 2).max(0);
-        let text_y = position.y + ((button_size.y as i32 - text_size.y as i32) / 2).max(0);
+        let text_x =
+            position.x + ((button_size.x.cast_signed() - text_size.x.cast_signed()) / 2).max(0);
+        let text_y =
+            position.y + ((button_size.y.cast_signed() - text_size.y.cast_signed()) / 2).max(0);
         self.draw_commands.push(DrawCommand::Text {
             font: self.font.clone(),
             text: text.to_owned(),
@@ -183,7 +187,7 @@ impl UiInner {
             self.draw_focus_outline(position, button_size);
         }
 
-        self.advance(button_size.y as i32 + self.style.spacing);
+        self.advance(button_size.y.cast_signed() + self.style.spacing);
         self.widget_index += 1;
 
         is_focused && self.input.just_pressed(Button::A)
@@ -192,7 +196,7 @@ impl UiInner {
     fn checkbox(&mut self, text: &str, value: &mut bool) -> bool {
         let is_focused = self.widget_index == self.frame_focus_index;
         let size = self.style.checkbox_size;
-        let row_height = size.max(self.font.glyph_size().y) as i32;
+        let row_height = size.max(self.font.glyph_size().y).cast_signed();
         let position = self.cursor;
 
         let box_position = position;
@@ -215,8 +219,8 @@ impl UiInner {
         }
 
         let text_size = self.font.text_size(text);
-        let text_x = position.x + size as i32 + self.style.spacing;
-        let text_y = position.y + ((row_height - text_size.y as i32) / 2).max(0);
+        let text_x = position.x + size.cast_signed() + self.style.spacing;
+        let text_y = position.y + ((row_height - text_size.y.cast_signed()) / 2).max(0);
         self.draw_commands.push(DrawCommand::Text {
             font: self.font.clone(),
             text: text.to_owned(),
@@ -224,11 +228,14 @@ impl UiInner {
         });
 
         if is_focused {
-            let width = (size as i32 + self.style.spacing + text_size.x as i32)
-                .min(self.layout_width as i32)
-                .max(size as i32);
+            let width = (size.cast_signed() + self.style.spacing + text_size.x.cast_signed())
+                .min(self.layout_width.cast_signed())
+                .max(size.cast_signed());
             let outline_offset = ivec2(-1, -1);
-            let outline_size = uvec2((width + 2) as u32, (row_height + 1) as u32);
+            let outline_size = uvec2(
+                (width + 2).cast_unsigned(),
+                (row_height + 1).cast_unsigned(),
+            );
             self.draw_focus_outline(position + outline_offset, outline_size);
         }
 
@@ -250,14 +257,14 @@ impl UiInner {
         self.label(text);
 
         let is_focused = self.widget_index == self.frame_focus_index;
-        let slider_height = self.style.slider_height as i32;
+        let slider_height = self.style.slider_height.cast_signed();
         let position = self.cursor;
         let size = uvec2(self.layout_width, self.style.slider_height);
 
-        let track_height = self.style.slider_track_height as i32;
+        let track_height = self.style.slider_track_height.cast_signed();
         let track_y = position.y + ((slider_height - track_height) / 2).max(0);
         let track_position = ivec2(position.x, track_y);
-        let track_size = uvec2(size.x, track_height as u32);
+        let track_size = uvec2(size.x, track_height.cast_unsigned());
 
         self.draw_commands.push(DrawCommand::Rect {
             position: track_position,
@@ -280,10 +287,10 @@ impl UiInner {
         let range_size = (max_f - min_f).max(0.0001);
         let normalized = ((value_f - min_f) / range_size).clamp(0.0, 1.0);
         let knob_x = position.x + (normalized * (size.x.saturating_sub(1)) as f32) as i32;
-        let knob_half = (self.style.slider_knob_width / 2) as i32;
+        let knob_half = (self.style.slider_knob_width / 2).cast_signed();
         let knob_position = ivec2(
             knob_x - knob_half,
-            position.y + ((slider_height - self.style.slider_knob_height as i32) / 2).max(0),
+            position.y + ((slider_height - self.style.slider_knob_height.cast_signed()) / 2).max(0),
         );
         let knob_size = uvec2(self.style.slider_knob_width, self.style.slider_knob_height);
 
@@ -291,7 +298,7 @@ impl UiInner {
         if fill_width > 0 {
             self.draw_commands.push(DrawCommand::Rect {
                 position: track_position,
-                size: uvec2(fill_width, track_height as u32),
+                size: uvec2(fill_width, track_height.cast_unsigned()),
                 color: self.style.slider_fill,
                 filled: true,
             });
@@ -338,7 +345,7 @@ impl UiInner {
     }
 
     fn advance(&mut self, delta: i32) {
-        let max_y = HEIGHT as i32 - self.style.padding;
+        let max_y = HEIGHT.cast_signed() - self.style.padding;
         self.cursor.y = (self.cursor.y + delta).min(max_y);
     }
 
