@@ -380,6 +380,7 @@ dependencies = [
  "khronos-egl",
  "log",
  "nix",
+ "num-traits",
  "parking_lot",
  "strum",
  "thiserror",

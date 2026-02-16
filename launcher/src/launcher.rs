@@ -36,11 +36,16 @@ impl Launcher {
             if self.input.just_pressed(Button::Start) {
                 self.exit = true;
             }
-            self.screen.update(&self.input);
+            let screen = self.screen.update(&self.input);
+
             let mut frame = Frame::default();
             frame.set_clear_color(Color::rgb(100, 150, 240));
 
             self.screen.render(&mut frame, &self.font);
+
+            if let Some(screen) = screen {
+                self.screen = screen;
+            }
 
             self.graphics.present_frame(&frame).unwrap();
         }

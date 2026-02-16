@@ -156,7 +156,18 @@ impl Input {
         for device in &mut self.device_files {
             let mut buf = [0u8; std::mem::size_of::<InputEvent>()];
 
-            while matches!(device.read_exact(&mut buf), Ok(())) {
+            loop {
+                match device.read(&mut buf) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        if n != buf.len() {
+                            continue;
+                        }
+                    }
+                    Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => break,
+                    Err(_) => break,
+                }
+
                 let event = unsafe {
                     let ptr = buf.as_ptr().cast::<InputEvent>();
                     &*ptr

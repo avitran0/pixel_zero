@@ -4,6 +4,7 @@ use std::ops::RangeInclusive;
 use std::sync::Arc;
 
 use glam::{IVec2, UVec2, ivec2, uvec2};
+use num_traits::{Num, NumCast, ToPrimitive};
 use parking_lot::Mutex;
 use strum::IntoEnumIterator as _;
 
@@ -77,7 +78,10 @@ impl Ui {
         inner.checkbox(text, value)
     }
 
-    pub fn slider(&self, text: &str, value: &mut f32, range: RangeInclusive<f32>) -> bool {
+    pub fn slider<T>(&self, text: &str, value: &mut T, range: RangeInclusive<T>) -> bool
+    where
+        T: Num + Copy + PartialOrd + ToPrimitive + NumCast,
+    {
         let mut inner = self.0.lock();
         inner.slider(text, value, range)
     }
@@ -92,6 +96,10 @@ impl Ui {
         }
         inner.last_widget_count = widget_count;
         frame.add_commands(&inner.draw_commands);
+    }
+
+    pub fn font(&self) -> Font {
+        self.0.lock().font.clone()
     }
 }
 
@@ -235,7 +243,10 @@ impl UiInner {
         changed
     }
 
-    fn slider(&mut self, text: &str, value: &mut f32, range: RangeInclusive<f32>) -> bool {
+    fn slider<T>(&mut self, text: &str, value: &mut T, range: RangeInclusive<T>) -> bool
+    where
+        T: Num + Copy + PartialOrd + ToPrimitive + NumCast,
+    {
         self.label(text);
 
         let is_focused = self.widget_index == self.frame_focus_index;
@@ -256,8 +267,18 @@ impl UiInner {
         });
 
         let (min, max) = normalized_range(range);
-        let range_size = (max - min).max(0.0001);
-        let normalized = ((*value - min) / range_size).clamp(0.0, 1.0);
+        let Some(min_f) = min.to_f32() else {
+            return false;
+        };
+        let Some(max_f) = max.to_f32() else {
+            return false;
+        };
+        let Some(value_f) = value.to_f32() else {
+            return false;
+        };
+
+        let range_size = (max_f - min_f).max(0.0001);
+        let normalized = ((value_f - min_f) / range_size).clamp(0.0, 1.0);
         let knob_x = position.x + (normalized * (size.x.saturating_sub(1)) as f32) as i32;
         let knob_half = (self.style.slider_knob_width / 2) as i32;
         let knob_position = ivec2(
@@ -290,15 +311,17 @@ impl UiInner {
         let mut changed = false;
         if is_focused {
             let step = (range_size / 100.0).max(0.01);
-            let mut next_value = *value;
+            let mut next_value = value_f;
             if self.input.is_pressed(Button::Left) {
                 next_value -= step;
             }
             if self.input.is_pressed(Button::Right) {
                 next_value += step;
             }
-            next_value = next_value.clamp(min, max);
-            if (next_value - *value).abs() > f32::EPSILON {
+            next_value = next_value.clamp(min_f, max_f);
+            if (next_value - value_f).abs() > f32::EPSILON
+                && let Some(next_value) = NumCast::from(next_value)
+            {
                 *value = next_value;
                 changed = true;
             }
@@ -410,7 +433,7 @@ impl Default for UiStyle {
     }
 }
 
-fn normalized_range(range: RangeInclusive<f32>) -> (f32, f32) {
+fn normalized_range<T: PartialOrd + Copy>(range: RangeInclusive<T>) -> (T, T) {
     let start = *range.start();
     let end = *range.end();
     if start <= end {

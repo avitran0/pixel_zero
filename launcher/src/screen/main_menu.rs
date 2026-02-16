@@ -4,13 +4,13 @@ use pixel_zero::{
     ui::Ui,
 };
 
-use crate::screen::Screen;
+use crate::screen::{Screen, game_menu::GameMenu};
 
 pub struct MainMenu {
     ui: Ui,
 
     test_bool: bool,
-    test_int: f32,
+    test_int: i32,
 }
 
 impl MainMenu {
@@ -19,18 +19,23 @@ impl MainMenu {
         Self {
             ui,
             test_bool: false,
-            test_int: 50.0,
+            test_int: 50,
         }
     }
 }
 
 impl Screen for MainMenu {
-    fn update(&mut self, input: &Input) {
+    fn update(&mut self, input: &Input) -> Option<Box<dyn Screen>> {
         self.ui.update_input(input);
         self.ui.begin_frame();
-        self.ui.button("Text Here");
+        if self.ui.button("Text Here") {
+            return Some(Box::new(GameMenu::init(self.ui.font())))
+        }
         self.ui.checkbox("test", &mut self.test_bool);
-        self.ui.slider("slider", &mut self.test_int, 0.0..=100.0);
+        self.ui.slider("slider", &mut self.test_int, 0..=100);
+        self.ui.label(&format!("{}", self.test_int));
+
+        None
     }
 
     fn render(&self, frame: &mut Frame, font: &Font) {

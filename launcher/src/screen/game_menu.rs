@@ -18,7 +18,7 @@ pub struct GameMenu {
 }
 
 impl GameMenu {
-    pub fn init(font: &Font) -> Self {
+    pub fn init(font: Font) -> Self {
         let exe_dir = std::env::current_exe().unwrap();
         let dir = exe_dir.parent().unwrap();
         let games: Vec<GameInfo> = std::fs::read_dir(dir)
@@ -54,8 +54,9 @@ impl GameMenu {
 }
 
 impl Screen for GameMenu {
-    fn update(&mut self, input: &Input) {
+    fn update(&mut self, input: &Input) -> Option<Box<dyn Screen>> {
         self.button_state = *input.state();
+        None
     }
 
     fn render(&self, frame: &mut Frame, font: &Font) {
