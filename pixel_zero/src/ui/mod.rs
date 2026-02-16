@@ -204,21 +204,8 @@ impl UiInner {
         let button_size = self.button_size();
         let position = self.place_widget(button_size);
 
-        let fill = if is_focused {
-            self.style.widget_bg_focused
-        } else {
-            self.style.widget_bg
-        };
-
-        self.draw_rect(position, button_size, fill, true);
-        self.draw_rect(position, button_size, self.style.widget_border, false);
-
-        let text_size = self.font.text_size(text);
-        let text_x =
-            position.x + ((button_size.x.cast_signed() - text_size.x.cast_signed()) / 2).max(0);
-        let text_y =
-            position.y + ((button_size.y.cast_signed() - text_size.y.cast_signed()) / 2).max(0);
-        self.draw_text(text, ivec2(text_x, text_y));
+        self.draw_widget_background(position, button_size, is_focused);
+        self.draw_centered_text(text, position, button_size);
 
         if is_focused {
             self.draw_focus_outline(position, button_size);
@@ -231,39 +218,33 @@ impl UiInner {
 
     fn checkbox(&mut self, text: &str, value: &mut bool) -> bool {
         let is_focused = self.widget_index == self.frame_focus_index;
-        let size = self.style.checkbox_size;
-        let row_height = size.max(self.font.glyph_size().y).cast_signed();
-        let text_size = self.font.text_size(text);
-        let width = (size.cast_signed() + self.style.spacing + text_size.x.cast_signed())
-            .max(size.cast_signed())
-            .cast_unsigned();
-        let position = self.place_widget(uvec2(width, row_height.cast_unsigned()));
+        let layout = self.labeled_box_layout(text, self.style.checkbox_size);
 
-        let box_position = position;
-        let box_size = uvec2(size, size);
-
-        self.draw_rect(box_position, box_size, self.style.widget_border, false);
+        self.draw_rect(
+            layout.box_position,
+            layout.box_size,
+            self.style.widget_border,
+            false,
+        );
 
         if *value {
             self.draw_rect(
-                box_position + 2,
-                box_size - 4,
+                layout.box_position + 2,
+                layout.box_size - 4,
                 self.style.checkbox_fill,
                 true,
             );
         }
 
-        let text_x = position.x + size.cast_signed() + self.style.spacing;
-        let text_y = position.y + ((row_height - text_size.y.cast_signed()) / 2).max(0);
-        self.draw_text(text, ivec2(text_x, text_y));
+        self.draw_text(text, layout.text_position);
 
         if is_focused {
             let outline_offset = ivec2(-1, -1);
             let outline_size = uvec2(
-                (width.cast_signed() + 2).cast_unsigned(),
-                (row_height + 1).cast_unsigned(),
+                (layout.width.cast_signed() + 2).cast_unsigned(),
+                (layout.row_height + 1).cast_unsigned(),
             );
-            self.draw_focus_outline(position + outline_offset, outline_size);
+            self.draw_focus_outline(layout.position + outline_offset, outline_size);
         }
 
         let mut changed = false;
@@ -283,61 +264,21 @@ impl UiInner {
         self.label(text);
 
         let is_focused = self.widget_index == self.frame_focus_index;
-        let row_height = self.style.button_height.max(self.font.glyph_size().y + 6);
-        let size = uvec2(self.layout_width, row_height);
+        let size = uvec2(self.layout_width, self.widget_height());
         let position = self.place_widget(size);
 
-        let fill = if is_focused {
-            self.style.widget_bg_focused
-        } else {
-            self.style.widget_bg
-        };
-        self.draw_rect(position, size, fill, true);
-        self.draw_rect(position, size, self.style.widget_border, false);
+        self.draw_widget_background(position, size, is_focused);
 
         let value_text = format!("< {} >", value);
-        let text_size = self.font.text_size(&value_text);
-        let text_x = position.x + ((size.x.cast_signed() - text_size.x.cast_signed()) / 2).max(0);
-        let text_y = position.y + ((size.y.cast_signed() - text_size.y.cast_signed()) / 2).max(0);
-        self.draw_text(&value_text, ivec2(text_x, text_y));
+        self.draw_centered_text(&value_text, position, size);
 
         if is_focused {
             self.draw_focus_outline(position, size);
         }
 
-        let (min, max) = normalized_range(range);
-        let Some(min_f) = min.to_f32() else {
-            return false;
-        };
-        let Some(max_f) = max.to_f32() else {
-            return false;
-        };
-        let Some(value_f) = value.to_f32() else {
-            return false;
-        };
-        let Some(speed_f) = speed.to_f32() else {
-            return false;
-        };
-
         let mut changed = false;
         if is_focused {
-            let step = speed_f.abs();
-            if step > 0.0 {
-                let mut next_value = value_f;
-                if self.input.just_pressed(Button::Left) {
-                    next_value -= step;
-                }
-                if self.input.just_pressed(Button::Right) {
-                    next_value += step;
-                }
-                next_value = next_value.clamp(min_f, max_f);
-                if (next_value - value_f).abs() > f32::EPSILON
-                    && let Some(next_value) = NumCast::from(next_value)
-                {
-                    *value = next_value;
-                    changed = true;
-                }
-            }
+            changed = apply_step_input(&self.input, value, range, speed);
         }
 
         self.widget_index += 1;
@@ -390,8 +331,11 @@ impl UiInner {
     }
 
     fn button_size(&self) -> UVec2 {
-        let height = self.style.button_height.max(self.font.glyph_size().y + 6);
-        uvec2(self.layout_width, height)
+        uvec2(self.layout_width, self.widget_height())
+    }
+
+    fn widget_height(&self) -> u32 {
+        self.style.button_height.max(self.font.glyph_size().y + 6)
     }
 
     fn place_widget(&mut self, size: UVec2) -> IVec2 {
@@ -468,6 +412,43 @@ impl UiInner {
         self.draw_rect(position, size, self.style.focus_outline, false);
     }
 
+    fn draw_widget_background(&mut self, position: IVec2, size: UVec2, focused: bool) {
+        let fill = if focused {
+            self.style.widget_bg_focused
+        } else {
+            self.style.widget_bg
+        };
+        self.draw_rect(position, size, fill, true);
+        self.draw_rect(position, size, self.style.widget_border, false);
+    }
+
+    fn draw_centered_text(&mut self, text: &str, position: IVec2, size: UVec2) {
+        let text_size = self.font.text_size(text);
+        let text_x = position.x + ((size.x.cast_signed() - text_size.x.cast_signed()) / 2).max(0);
+        let text_y = position.y + ((size.y.cast_signed() - text_size.y.cast_signed()) / 2).max(0);
+        self.draw_text(text, ivec2(text_x, text_y));
+    }
+
+    fn labeled_box_layout(&mut self, text: &str, box_size: u32) -> LabeledBoxLayout {
+        let row_height = box_size.max(self.font.glyph_size().y).cast_signed();
+        let text_size = self.font.text_size(text);
+        let width = (box_size.cast_signed() + self.style.spacing + text_size.x.cast_signed())
+            .max(box_size.cast_signed())
+            .cast_unsigned();
+        let position = self.place_widget(uvec2(width, row_height.cast_unsigned()));
+        let text_x = position.x + box_size.cast_signed() + self.style.spacing;
+        let text_y = position.y + ((row_height - text_size.y.cast_signed()) / 2).max(0);
+
+        LabeledBoxLayout {
+            position,
+            box_position: position,
+            box_size: uvec2(box_size, box_size),
+            text_position: ivec2(text_x, text_y),
+            width,
+            row_height,
+        }
+    }
+
     fn draw_rect(&mut self, position: IVec2, size: UVec2, color: Color, filled: bool) {
         self.draw_commands.push(DrawCommand::Rect {
             position,
@@ -493,6 +474,16 @@ impl UiInner {
     fn clamp_layout_width(&self, width: u32) -> u32 {
         width.clamp(1, self.max_layout_width().max(1))
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct LabeledBoxLayout {
+    position: IVec2,
+    box_position: IVec2,
+    box_size: UVec2,
+    text_position: IVec2,
+    width: u32,
+    row_height: i32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -582,4 +573,46 @@ fn normalized_range<T: PartialOrd + Copy>(range: RangeInclusive<T>) -> (T, T) {
     } else {
         (end, start)
     }
+}
+
+fn apply_step_input<T>(input: &UiInput, value: &mut T, range: RangeInclusive<T>, speed: T) -> bool
+where
+    T: Num + Copy + PartialOrd + ToPrimitive + NumCast,
+{
+    let (min, max) = normalized_range(range);
+    let Some(min_f) = min.to_f32() else {
+        return false;
+    };
+    let Some(max_f) = max.to_f32() else {
+        return false;
+    };
+    let Some(value_f) = value.to_f32() else {
+        return false;
+    };
+    let Some(speed_f) = speed.to_f32() else {
+        return false;
+    };
+
+    let step = speed_f.abs();
+    if step == 0.0 {
+        return false;
+    }
+
+    let mut next_value = value_f;
+    if input.just_pressed(Button::Left) {
+        next_value -= step;
+    }
+    if input.just_pressed(Button::Right) {
+        next_value += step;
+    }
+    next_value = next_value.clamp(min_f, max_f);
+
+    if (next_value - value_f).abs() > f32::EPSILON
+        && let Some(next_value) = NumCast::from(next_value)
+    {
+        *value = next_value;
+        return true;
+    }
+
+    false
 }

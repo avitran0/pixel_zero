@@ -33,21 +33,10 @@ impl Screen for MainMenu {
         if self.ui.button("Start Game") {
             return Some(Box::new(GameMenu::init(self.ui.font())));
         }
-        self.ui.checkbox("Show FPS", &mut self.test_bool);
         self.ui.slider("Volume", &mut self.test_int, 0..=10, 1);
         self.ui.progress_bar(self.test_int, 0..=10);
         self.ui.label(&format!("Volume: {}", self.test_int));
-
-        self.ui.separator();
-        self.ui.begin_columns(2);
-        self.ui.label("Left Column");
-        self.ui.button("Alpha");
-        self.ui.button("Beta");
-        self.ui.next_column();
-        self.ui.label("Right Column");
-        self.ui.button("Gamma");
-        self.ui.button("Delta");
-        self.ui.end_columns();
+        self.ui.checkbox("Show FPS", &mut self.test_bool);
 
         None
     }
