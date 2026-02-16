@@ -201,7 +201,7 @@ impl UiInner {
 
     fn button(&mut self, text: &str) -> bool {
         let is_focused = self.widget_index == self.frame_focus_index;
-        let button_size = self.button_size();
+        let button_size = self.sized_widget(text);
         let position = self.place_widget(button_size);
 
         self.draw_widget_background(position, button_size, is_focused);
@@ -264,12 +264,12 @@ impl UiInner {
         self.label(text);
 
         let is_focused = self.widget_index == self.frame_focus_index;
-        let size = uvec2(self.layout_width, self.widget_height());
+        let value_text = format!("< {} >", value);
+        let size = self.sized_widget(&value_text);
         let position = self.place_widget(size);
 
         self.draw_widget_background(position, size, is_focused);
 
-        let value_text = format!("< {} >", value);
         self.draw_centered_text(&value_text, position, size);
 
         if is_focused {
@@ -330,12 +330,15 @@ impl UiInner {
         self.place_widget(size);
     }
 
-    fn button_size(&self) -> UVec2 {
-        uvec2(self.layout_width, self.widget_height())
-    }
-
-    fn widget_height(&self) -> u32 {
-        self.style.button_height.max(self.font.glyph_size().y + 6)
+    fn sized_widget(&self, text: &str) -> UVec2 {
+        let text_size = self.font.text_size(text);
+        let pad = self.style.widget_padding;
+        let min_height = self.font.glyph_size().y.cast_signed();
+        let height = (text_size.y.cast_signed() + pad * 2).max(min_height);
+        let width = (text_size.x.cast_signed() + pad * 2)
+            .min(self.layout_width.cast_signed())
+            .max(1);
+        uvec2(width.cast_unsigned(), height.cast_unsigned().max(1))
     }
 
     fn place_widget(&mut self, size: UVec2) -> IVec2 {
@@ -350,8 +353,7 @@ impl UiInner {
     }
 
     fn clamp_y(&self, y: i32) -> i32 {
-        let max_y = HEIGHT.cast_signed() - self.style.padding;
-        y.min(max_y)
+        y.min(HEIGHT.cast_signed() - self.style.padding)
     }
 
     fn begin_columns(&mut self, count: u32) {
@@ -424,17 +426,20 @@ impl UiInner {
 
     fn draw_centered_text(&mut self, text: &str, position: IVec2, size: UVec2) {
         let text_size = self.font.text_size(text);
-        let text_x = position.x + ((size.x.cast_signed() - text_size.x.cast_signed()) / 2).max(0);
+        let diff_x = size.x.cast_signed() - text_size.x.cast_signed();
+        let offset_x = if diff_x > 0 { (diff_x - 1) / 2 } else { 0 };
+        let text_x = position.x + offset_x;
         let text_y = position.y + ((size.y.cast_signed() - text_size.y.cast_signed()) / 2).max(0);
         self.draw_text(text, ivec2(text_x, text_y));
     }
 
     fn labeled_box_layout(&mut self, text: &str, box_size: u32) -> LabeledBoxLayout {
-        let row_height = box_size.max(self.font.glyph_size().y).cast_signed();
         let text_size = self.font.text_size(text);
-        let width = (box_size.cast_signed() + self.style.spacing + text_size.x.cast_signed())
+        let row_height = box_size.max(text_size.y).cast_signed();
+        let width = (box_size.cast_signed() + self.style.spacing + text_size.x.cast_signed() + 1)
             .max(box_size.cast_signed())
             .cast_unsigned();
+        let width = width.min(self.layout_width).max(1);
         let position = self.place_widget(uvec2(width, row_height.cast_unsigned()));
         let text_x = position.x + box_size.cast_signed() + self.style.spacing;
         let text_y = position.y + ((row_height - text_size.y.cast_signed()) / 2).max(0);
@@ -519,10 +524,10 @@ struct UiStyle {
     padding: i32,
     spacing: i32,
     layout_width: Option<u32>,
-    button_height: u32,
     checkbox_size: u32,
     progress_height: u32,
     separator_thickness: u32,
+    widget_padding: i32,
     widget_bg: Color,
     widget_bg_focused: Color,
     widget_border: Color,
@@ -536,15 +541,15 @@ struct UiStyle {
 impl Default for UiStyle {
     fn default() -> Self {
         Self {
-            padding: 4,
+            padding: 2,
             spacing: 2,
             layout_width: None,
-            button_height: 12,
             checkbox_size: 12,
             progress_height: 6,
             separator_thickness: 1,
-            widget_bg: Color::rgb(50, 50, 50),
-            widget_bg_focused: Color::rgb(70, 70, 70),
+            widget_padding: 2,
+            widget_bg: Color::rgb(24, 24, 32),
+            widget_bg_focused: Color::rgb(50, 50, 70),
             widget_border: Color::rgb(90, 90, 90),
             checkbox_fill: Color::rgb(220, 220, 220),
             progress_track: Color::rgb(60, 60, 60),
