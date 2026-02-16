@@ -52,8 +52,7 @@ impl Ui {
 
         inner.frame_focus_index = focus_index;
         inner.widget_index = 0;
-        inner.cursor = ivec2(inner.style.padding, inner.style.padding);
-        inner.layout_width = WIDTH.saturating_sub((inner.style.padding * 2).max(0).cast_unsigned());
+        inner.reset_layout();
         inner.draw_commands.clear();
     }
 
@@ -61,7 +60,7 @@ impl Ui {
         let mut inner = self.0.lock();
         inner.draw_commands.clear();
         inner.widget_index = 0;
-        inner.cursor = ivec2(inner.style.padding, inner.style.padding);
+        inner.reset_layout();
     }
 
     pub fn label(&self, text: &str) {
@@ -79,12 +78,73 @@ impl Ui {
         inner.checkbox(text, value)
     }
 
+    pub fn radio(&self, text: &str, selected: &mut usize, index: usize) -> bool {
+        let mut inner = self.0.lock();
+        inner.radio(text, selected, index)
+    }
+
     pub fn slider<T>(&self, text: &str, value: &mut T, range: RangeInclusive<T>) -> bool
     where
         T: Num + Copy + PartialOrd + ToPrimitive + NumCast,
     {
         let mut inner = self.0.lock();
         inner.slider(text, value, range)
+    }
+
+    pub fn progress_bar<T>(&self, value: T, range: RangeInclusive<T>)
+    where
+        T: Num + Copy + PartialOrd + ToPrimitive,
+    {
+        let mut inner = self.0.lock();
+        inner.progress_bar(value, range);
+    }
+
+    pub fn separator(&self) {
+        let mut inner = self.0.lock();
+        inner.separator();
+    }
+
+    pub fn spacer(&self, height: u32) {
+        let mut inner = self.0.lock();
+        inner.spacer(height);
+    }
+
+    pub fn begin_columns(&self, count: u32) {
+        let mut inner = self.0.lock();
+        inner.begin_columns(count);
+    }
+
+    pub fn next_column(&self) {
+        let mut inner = self.0.lock();
+        inner.next_column();
+    }
+
+    pub fn end_columns(&self) {
+        let mut inner = self.0.lock();
+        inner.end_columns();
+    }
+
+    pub fn set_layout_width(&self, width: u32) {
+        let mut inner = self.0.lock();
+        inner.style.layout_width = Some(width.max(1));
+        inner.layout_width = inner.style.layout_width.unwrap_or(inner.layout_width);
+    }
+
+    pub fn clear_layout_width(&self) {
+        let mut inner = self.0.lock();
+        inner.style.layout_width = None;
+        let padding = inner.style.padding;
+        inner.layout_width = WIDTH.saturating_sub((padding * 2).max(0).cast_unsigned());
+    }
+
+    pub fn set_padding(&self, padding: i32) {
+        let mut inner = self.0.lock();
+        inner.style.padding = padding.max(0);
+    }
+
+    pub fn set_spacing(&self, spacing: i32) {
+        let mut inner = self.0.lock();
+        inner.style.spacing = spacing.max(0);
     }
 
     pub fn render(&self, frame: &mut Frame) {
@@ -117,6 +177,7 @@ pub struct UiInner {
     layout_width: u32,
     frame_focus_index: usize,
     widget_index: usize,
+    columns: Option<ColumnsState>,
 }
 
 impl UiInner {
@@ -129,29 +190,29 @@ impl UiInner {
             style: UiStyle::default(),
             draw_commands: Vec::new(),
             cursor: ivec2(0, 0),
-            layout_width: WIDTH,
+            layout_width: WIDTH / 3,
             frame_focus_index: 0,
             widget_index: 0,
+            columns: None,
         }
     }
 }
 
 impl UiInner {
     fn label(&mut self, text: &str) {
-        let position = self.cursor;
+        let text_size = self.font.text_size(text);
+        let position = self.place_widget(text_size);
         self.draw_commands.push(DrawCommand::Text {
             font: self.font.clone(),
             text: text.to_owned(),
             position,
         });
-        let height = self.font.glyph_size().y.cast_signed();
-        self.advance(height + self.style.spacing);
     }
 
     fn button(&mut self, text: &str) -> bool {
         let is_focused = self.widget_index == self.frame_focus_index;
         let button_size = self.button_size();
-        let position = self.cursor;
+        let position = self.place_widget(button_size);
 
         let fill = if is_focused {
             self.style.widget_bg_focused
@@ -187,7 +248,6 @@ impl UiInner {
             self.draw_focus_outline(position, button_size);
         }
 
-        self.advance(button_size.y.cast_signed() + self.style.spacing);
         self.widget_index += 1;
 
         is_focused && self.input.just_pressed(Button::A)
@@ -197,7 +257,11 @@ impl UiInner {
         let is_focused = self.widget_index == self.frame_focus_index;
         let size = self.style.checkbox_size;
         let row_height = size.max(self.font.glyph_size().y).cast_signed();
-        let position = self.cursor;
+        let text_size = self.font.text_size(text);
+        let width = (size.cast_signed() + self.style.spacing + text_size.x.cast_signed())
+            .max(size.cast_signed())
+            .cast_unsigned();
+        let position = self.place_widget(uvec2(width, row_height.cast_unsigned()));
 
         let box_position = position;
         let box_size = uvec2(size, size);
@@ -218,7 +282,6 @@ impl UiInner {
             });
         }
 
-        let text_size = self.font.text_size(text);
         let text_x = position.x + size.cast_signed() + self.style.spacing;
         let text_y = position.y + ((row_height - text_size.y.cast_signed()) / 2).max(0);
         self.draw_commands.push(DrawCommand::Text {
@@ -228,12 +291,9 @@ impl UiInner {
         });
 
         if is_focused {
-            let width = (size.cast_signed() + self.style.spacing + text_size.x.cast_signed())
-                .min(self.layout_width.cast_signed())
-                .max(size.cast_signed());
             let outline_offset = ivec2(-1, -1);
             let outline_size = uvec2(
-                (width + 2).cast_unsigned(),
+                (width.cast_signed() + 2).cast_unsigned(),
                 (row_height + 1).cast_unsigned(),
             );
             self.draw_focus_outline(position + outline_offset, outline_size);
@@ -245,7 +305,63 @@ impl UiInner {
             changed = true;
         }
 
-        self.advance(row_height + self.style.spacing);
+        self.widget_index += 1;
+        changed
+    }
+
+    fn radio(&mut self, text: &str, selected: &mut usize, index: usize) -> bool {
+        let is_focused = self.widget_index == self.frame_focus_index;
+        let size = self.style.radio_size;
+        let row_height = size.max(self.font.glyph_size().y).cast_signed();
+        let text_size = self.font.text_size(text);
+        let width = (size.cast_signed() + self.style.spacing + text_size.x.cast_signed())
+            .max(size.cast_signed())
+            .cast_unsigned();
+        let position = self.place_widget(uvec2(width, row_height.cast_unsigned()));
+
+        let box_position = position;
+        let box_size = uvec2(size, size);
+        self.draw_commands.push(DrawCommand::Rect {
+            position: box_position,
+            size: box_size,
+            color: self.style.widget_border,
+            filled: false,
+        });
+
+        if *selected == index {
+            let inset = 3u32.min(size.saturating_sub(1));
+            let inset_i = inset.cast_signed();
+            self.draw_commands.push(DrawCommand::Rect {
+                position: box_position + ivec2(inset_i, inset_i),
+                size: box_size.saturating_sub(uvec2(inset * 2, inset * 2)),
+                color: self.style.radio_fill,
+                filled: true,
+            });
+        }
+
+        let text_x = position.x + size.cast_signed() + self.style.spacing;
+        let text_y = position.y + ((row_height - text_size.y.cast_signed()) / 2).max(0);
+        self.draw_commands.push(DrawCommand::Text {
+            font: self.font.clone(),
+            text: text.to_owned(),
+            position: ivec2(text_x, text_y),
+        });
+
+        if is_focused {
+            let outline_offset = ivec2(-1, -1);
+            let outline_size = uvec2(
+                (width.cast_signed() + 2).cast_unsigned(),
+                (row_height + 1).cast_unsigned(),
+            );
+            self.draw_focus_outline(position + outline_offset, outline_size);
+        }
+
+        let mut changed = false;
+        if is_focused && self.input.just_pressed(Button::A) && *selected != index {
+            *selected = index;
+            changed = true;
+        }
+
         self.widget_index += 1;
         changed
     }
@@ -258,8 +374,8 @@ impl UiInner {
 
         let is_focused = self.widget_index == self.frame_focus_index;
         let slider_height = self.style.slider_height.cast_signed();
-        let position = self.cursor;
         let size = uvec2(self.layout_width, self.style.slider_height);
+        let position = self.place_widget(size);
 
         let track_height = self.style.slider_track_height.cast_signed();
         let track_y = position.y + ((slider_height - track_height) / 2).max(0);
@@ -334,9 +450,68 @@ impl UiInner {
             }
         }
 
-        self.advance(slider_height + self.style.spacing);
         self.widget_index += 1;
         changed
+    }
+
+    fn progress_bar<T>(&mut self, value: T, range: RangeInclusive<T>)
+    where
+        T: Num + Copy + PartialOrd + ToPrimitive,
+    {
+        let (min, max) = normalized_range(range);
+        let Some(min_f) = min.to_f32() else {
+            return;
+        };
+        let Some(max_f) = max.to_f32() else {
+            return;
+        };
+        let Some(value_f) = value.to_f32() else {
+            return;
+        };
+        let range_size = (max_f - min_f).max(0.0001);
+        let normalized = ((value_f - min_f) / range_size).clamp(0.0, 1.0);
+        let size = uvec2(self.layout_width, self.style.progress_height);
+        let position = self.place_widget(size);
+        let fill_width = (normalized * size.x as f32) as u32;
+
+        self.draw_commands.push(DrawCommand::Rect {
+            position,
+            size,
+            color: self.style.progress_track,
+            filled: true,
+        });
+
+        if fill_width > 0 {
+            self.draw_commands.push(DrawCommand::Rect {
+                position,
+                size: uvec2(fill_width, size.y),
+                color: self.style.progress_fill,
+                filled: true,
+            });
+        }
+
+        self.draw_commands.push(DrawCommand::Rect {
+            position,
+            size,
+            color: self.style.widget_border,
+            filled: false,
+        });
+    }
+
+    fn separator(&mut self) {
+        let size = uvec2(self.layout_width, self.style.separator_thickness.max(1));
+        let position = self.place_widget(size);
+        self.draw_commands.push(DrawCommand::Rect {
+            position,
+            size,
+            color: self.style.separator,
+            filled: true,
+        });
+    }
+
+    fn spacer(&mut self, height: u32) {
+        let size = uvec2(self.layout_width, height.max(1));
+        self.place_widget(size);
     }
 
     fn button_size(&self) -> UVec2 {
@@ -344,9 +519,73 @@ impl UiInner {
         uvec2(self.layout_width, height)
     }
 
-    fn advance(&mut self, delta: i32) {
+    fn place_widget(&mut self, size: UVec2) -> IVec2 {
+        let position = self.cursor;
+        self.cursor.y = self.clamp_y(self.cursor.y + size.y.cast_signed() + self.style.spacing);
+
+        if let Some(columns) = &mut self.columns {
+            columns.max_y = columns.max_y.max(self.cursor.y);
+        }
+
+        position
+    }
+
+    fn clamp_y(&self, y: i32) -> i32 {
         let max_y = HEIGHT.cast_signed() - self.style.padding;
-        self.cursor.y = (self.cursor.y + delta).min(max_y);
+        y.min(max_y)
+    }
+
+    fn begin_columns(&mut self, count: u32) {
+        if count < 2 || self.columns.is_some() {
+            return;
+        }
+        let spacing = self.style.spacing.max(0).cast_unsigned();
+        let total_spacing = spacing.saturating_mul(count.saturating_sub(1));
+        let available = self.layout_width.saturating_sub(total_spacing).max(1);
+        let column_width = (available / count).max(1);
+        self.columns = Some(ColumnsState {
+            count,
+            column_width,
+            column_index: 0,
+            origin: self.cursor,
+            max_y: self.cursor.y,
+            previous_layout_width: self.layout_width,
+        });
+        self.layout_width = column_width;
+    }
+
+    fn next_column(&mut self) {
+        let Some(columns) = &mut self.columns else {
+            return;
+        };
+
+        columns.max_y = columns.max_y.max(self.cursor.y);
+        columns.column_index = (columns.column_index + 1).min(columns.count - 1);
+        let spacing = self.style.spacing.max(0);
+        let offset =
+            columns.column_index.cast_signed() * (columns.column_width.cast_signed() + spacing);
+        self.cursor = ivec2(columns.origin.x + offset, columns.origin.y);
+    }
+
+    fn end_columns(&mut self) {
+        let Some(columns) = self.columns.take() else {
+            return;
+        };
+
+        let max_y = columns.max_y.max(self.cursor.y);
+        let next_y = self.clamp_y(max_y + self.style.spacing);
+        self.layout_width = columns.previous_layout_width;
+        self.cursor = ivec2(columns.origin.x, next_y);
+    }
+
+    fn reset_layout(&mut self) {
+        let padding = self.style.padding;
+        self.cursor = ivec2(padding, padding);
+        self.layout_width = self
+            .style
+            .layout_width
+            .unwrap_or_else(|| WIDTH.saturating_sub((padding * 2).max(0).cast_unsigned()));
+        self.columns = None;
     }
 
     fn draw_focus_outline(&mut self, position: IVec2, size: UVec2) {
@@ -401,43 +640,69 @@ impl Default for UiInput {
 struct UiStyle {
     padding: i32,
     spacing: i32,
+    layout_width: Option<u32>,
     button_height: u32,
     checkbox_size: u32,
+    radio_size: u32,
     slider_height: u32,
     slider_track_height: u32,
     slider_knob_width: u32,
     slider_knob_height: u32,
+    progress_height: u32,
+    separator_thickness: u32,
     widget_bg: Color,
     widget_bg_focused: Color,
     widget_border: Color,
     checkbox_fill: Color,
+    radio_fill: Color,
     slider_track: Color,
     slider_fill: Color,
     slider_knob: Color,
+    progress_track: Color,
+    progress_fill: Color,
+    separator: Color,
     focus_outline: Color,
 }
 
 impl Default for UiStyle {
     fn default() -> Self {
         Self {
-            padding: 8,
-            spacing: 6,
-            button_height: 16,
+            padding: 4,
+            spacing: 2,
+            layout_width: None,
+            button_height: 12,
             checkbox_size: 12,
+            radio_size: 12,
             slider_height: 12,
             slider_track_height: 2,
             slider_knob_width: 6,
             slider_knob_height: 12,
+            progress_height: 6,
+            separator_thickness: 1,
             widget_bg: Color::rgb(50, 50, 50),
             widget_bg_focused: Color::rgb(70, 70, 70),
             widget_border: Color::rgb(90, 90, 90),
             checkbox_fill: Color::rgb(220, 220, 220),
+            radio_fill: Color::rgb(220, 220, 220),
             slider_track: Color::rgb(60, 60, 60),
             slider_fill: Color::rgb(120, 120, 120),
             slider_knob: Color::rgb(220, 220, 220),
+            progress_track: Color::rgb(60, 60, 60),
+            progress_fill: Color::rgb(120, 160, 220),
+            separator: Color::rgb(80, 80, 80),
             focus_outline: Color::YELLOW,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ColumnsState {
+    count: u32,
+    column_width: u32,
+    column_index: u32,
+    origin: IVec2,
+    max_y: i32,
+    previous_layout_width: u32,
 }
 
 fn normalized_range<T: PartialOrd + Copy>(range: RangeInclusive<T>) -> (T, T) {

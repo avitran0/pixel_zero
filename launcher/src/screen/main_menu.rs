@@ -11,6 +11,7 @@ pub struct MainMenu {
 
     test_bool: bool,
     test_int: i32,
+    selected_mode: usize,
 }
 
 impl MainMenu {
@@ -20,6 +21,7 @@ impl MainMenu {
             ui,
             test_bool: false,
             test_int: 50,
+            selected_mode: 0,
         }
     }
 }
@@ -28,12 +30,31 @@ impl Screen for MainMenu {
     fn update(&mut self, input: &Input) -> Option<Box<dyn Screen>> {
         self.ui.update_input(input);
         self.ui.begin_frame();
-        if self.ui.button("Text Here") {
-            return Some(Box::new(GameMenu::init(self.ui.font())))
+
+        self.ui.set_layout_width(140);
+        if self.ui.button("Start Game") {
+            return Some(Box::new(GameMenu::init(self.ui.font())));
         }
-        self.ui.checkbox("test", &mut self.test_bool);
-        self.ui.slider("slider", &mut self.test_int, 0..=100);
-        self.ui.label(&format!("{}", self.test_int));
+        self.ui.checkbox("Show FPS", &mut self.test_bool);
+        self.ui.slider("Volume", &mut self.test_int, 0..=100);
+        self.ui.progress_bar(self.test_int, 0..=100);
+        self.ui.label(&format!("Volume: {}", self.test_int));
+
+        self.ui.label("Difficulty");
+        self.ui.radio("Easy", &mut self.selected_mode, 0);
+        self.ui.radio("Normal", &mut self.selected_mode, 1);
+        self.ui.radio("Hard", &mut self.selected_mode, 2);
+
+        self.ui.spacer(4);
+        self.ui.begin_columns(2);
+        self.ui.label("Left Column");
+        self.ui.button("Alpha");
+        self.ui.button("Beta");
+        self.ui.next_column();
+        self.ui.label("Right Column");
+        self.ui.button("Gamma");
+        self.ui.button("Delta");
+        self.ui.end_columns();
 
         None
     }
