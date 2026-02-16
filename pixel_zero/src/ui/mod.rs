@@ -127,14 +127,13 @@ impl Ui {
     pub fn set_layout_width(&self, width: u32) {
         let mut inner = self.0.lock();
         inner.style.layout_width = Some(width.max(1));
-        inner.layout_width = inner.style.layout_width.unwrap_or(inner.layout_width);
+        inner.layout_width = inner.clamp_layout_width(width);
     }
 
     pub fn clear_layout_width(&self) {
         let mut inner = self.0.lock();
         inner.style.layout_width = None;
-        let padding = inner.style.padding;
-        inner.layout_width = WIDTH.saturating_sub((padding * 2).max(0).cast_unsigned());
+        inner.layout_width = inner.max_layout_width();
     }
 
     pub fn set_padding(&self, padding: i32) {
@@ -202,11 +201,7 @@ impl UiInner {
     fn label(&mut self, text: &str) {
         let text_size = self.font.text_size(text);
         let position = self.place_widget(text_size);
-        self.draw_commands.push(DrawCommand::Text {
-            font: self.font.clone(),
-            text: text.to_owned(),
-            position,
-        });
+        self.draw_text(text, position);
     }
 
     fn button(&mut self, text: &str) -> bool {
@@ -220,29 +215,15 @@ impl UiInner {
             self.style.widget_bg
         };
 
-        self.draw_commands.push(DrawCommand::Rect {
-            position,
-            size: button_size,
-            color: fill,
-            filled: true,
-        });
-        self.draw_commands.push(DrawCommand::Rect {
-            position,
-            size: button_size,
-            color: self.style.widget_border,
-            filled: false,
-        });
+        self.draw_rect(position, button_size, fill, true);
+        self.draw_rect(position, button_size, self.style.widget_border, false);
 
         let text_size = self.font.text_size(text);
         let text_x =
             position.x + ((button_size.x.cast_signed() - text_size.x.cast_signed()) / 2).max(0);
         let text_y =
             position.y + ((button_size.y.cast_signed() - text_size.y.cast_signed()) / 2).max(0);
-        self.draw_commands.push(DrawCommand::Text {
-            font: self.font.clone(),
-            text: text.to_owned(),
-            position: ivec2(text_x, text_y),
-        });
+        self.draw_text(text, ivec2(text_x, text_y));
 
         if is_focused {
             self.draw_focus_outline(position, button_size);
@@ -266,29 +247,15 @@ impl UiInner {
         let box_position = position;
         let box_size = uvec2(size, size);
 
-        self.draw_commands.push(DrawCommand::Rect {
-            position: box_position,
-            size: box_size,
-            color: self.style.widget_border,
-            filled: false,
-        });
+        self.draw_rect(box_position, box_size, self.style.widget_border, false);
 
         if *value {
-            self.draw_commands.push(DrawCommand::Rect {
-                position: box_position + 2,
-                size: box_size - 4,
-                color: self.style.checkbox_fill,
-                filled: true,
-            });
+            self.draw_rect(box_position + 2, box_size - 4, self.style.checkbox_fill, true);
         }
 
         let text_x = position.x + size.cast_signed() + self.style.spacing;
         let text_y = position.y + ((row_height - text_size.y.cast_signed()) / 2).max(0);
-        self.draw_commands.push(DrawCommand::Text {
-            font: self.font.clone(),
-            text: text.to_owned(),
-            position: ivec2(text_x, text_y),
-        });
+        self.draw_text(text, ivec2(text_x, text_y));
 
         if is_focused {
             let outline_offset = ivec2(-1, -1);
@@ -321,31 +288,22 @@ impl UiInner {
 
         let box_position = position;
         let box_size = uvec2(size, size);
-        self.draw_commands.push(DrawCommand::Rect {
-            position: box_position,
-            size: box_size,
-            color: self.style.widget_border,
-            filled: false,
-        });
+        self.draw_rect(box_position, box_size, self.style.widget_border, false);
 
         if *selected == index {
             let inset = 3u32.min(size.saturating_sub(1));
             let inset_i = inset.cast_signed();
-            self.draw_commands.push(DrawCommand::Rect {
-                position: box_position + ivec2(inset_i, inset_i),
-                size: box_size.saturating_sub(uvec2(inset * 2, inset * 2)),
-                color: self.style.radio_fill,
-                filled: true,
-            });
+            self.draw_rect(
+                box_position + ivec2(inset_i, inset_i),
+                box_size.saturating_sub(uvec2(inset * 2, inset * 2)),
+                self.style.radio_fill,
+                true,
+            );
         }
 
         let text_x = position.x + size.cast_signed() + self.style.spacing;
         let text_y = position.y + ((row_height - text_size.y.cast_signed()) / 2).max(0);
-        self.draw_commands.push(DrawCommand::Text {
-            font: self.font.clone(),
-            text: text.to_owned(),
-            position: ivec2(text_x, text_y),
-        });
+        self.draw_text(text, ivec2(text_x, text_y));
 
         if is_focused {
             let outline_offset = ivec2(-1, -1);
@@ -382,12 +340,7 @@ impl UiInner {
         let track_position = ivec2(position.x, track_y);
         let track_size = uvec2(size.x, track_height.cast_unsigned());
 
-        self.draw_commands.push(DrawCommand::Rect {
-            position: track_position,
-            size: track_size,
-            color: self.style.slider_track,
-            filled: true,
-        });
+        self.draw_rect(track_position, track_size, self.style.slider_track, true);
 
         let (min, max) = normalized_range(range);
         let Some(min_f) = min.to_f32() else {
@@ -412,20 +365,15 @@ impl UiInner {
 
         let fill_width = (normalized * size.x as f32) as u32;
         if fill_width > 0 {
-            self.draw_commands.push(DrawCommand::Rect {
-                position: track_position,
-                size: uvec2(fill_width, track_height.cast_unsigned()),
-                color: self.style.slider_fill,
-                filled: true,
-            });
+            self.draw_rect(
+                track_position,
+                uvec2(fill_width, track_height.cast_unsigned()),
+                self.style.slider_fill,
+                true,
+            );
         }
 
-        self.draw_commands.push(DrawCommand::Rect {
-            position: knob_position,
-            size: knob_size,
-            color: self.style.slider_knob,
-            filled: true,
-        });
+        self.draw_rect(knob_position, knob_size, self.style.slider_knob, true);
 
         if is_focused {
             self.draw_focus_outline(position, size);
@@ -474,39 +422,19 @@ impl UiInner {
         let position = self.place_widget(size);
         let fill_width = (normalized * size.x as f32) as u32;
 
-        self.draw_commands.push(DrawCommand::Rect {
-            position,
-            size,
-            color: self.style.progress_track,
-            filled: true,
-        });
+        self.draw_rect(position, size, self.style.progress_track, true);
 
         if fill_width > 0 {
-            self.draw_commands.push(DrawCommand::Rect {
-                position,
-                size: uvec2(fill_width, size.y),
-                color: self.style.progress_fill,
-                filled: true,
-            });
+            self.draw_rect(position, uvec2(fill_width, size.y), self.style.progress_fill, true);
         }
 
-        self.draw_commands.push(DrawCommand::Rect {
-            position,
-            size,
-            color: self.style.widget_border,
-            filled: false,
-        });
+        self.draw_rect(position, size, self.style.widget_border, false);
     }
 
     fn separator(&mut self) {
         let size = uvec2(self.layout_width, self.style.separator_thickness.max(1));
         let position = self.place_widget(size);
-        self.draw_commands.push(DrawCommand::Rect {
-            position,
-            size,
-            color: self.style.separator,
-            filled: true,
-        });
+        self.draw_rect(position, size, self.style.separator, true);
     }
 
     fn spacer(&mut self, height: u32) {
@@ -584,17 +512,39 @@ impl UiInner {
         self.layout_width = self
             .style
             .layout_width
-            .unwrap_or_else(|| WIDTH.saturating_sub((padding * 2).max(0).cast_unsigned()));
+            .map(|width| self.clamp_layout_width(width))
+            .unwrap_or_else(|| self.max_layout_width());
         self.columns = None;
     }
 
     fn draw_focus_outline(&mut self, position: IVec2, size: UVec2) {
+        self.draw_rect(position, size, self.style.focus_outline, false);
+    }
+
+    fn draw_rect(&mut self, position: IVec2, size: UVec2, color: Color, filled: bool) {
         self.draw_commands.push(DrawCommand::Rect {
             position,
             size,
-            color: self.style.focus_outline,
-            filled: false,
+            color,
+            filled,
         });
+    }
+
+    fn draw_text(&mut self, text: &str, position: IVec2) {
+        self.draw_commands.push(DrawCommand::Text {
+            font: self.font.clone(),
+            text: text.to_owned(),
+            position,
+        });
+    }
+
+    fn max_layout_width(&self) -> u32 {
+        let padding = self.style.padding;
+        WIDTH.saturating_sub((padding * 2).max(0).cast_unsigned())
+    }
+
+    fn clamp_layout_width(&self, width: u32) -> u32 {
+        width.clamp(1, self.max_layout_width().max(1))
     }
 }
 

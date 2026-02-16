@@ -61,6 +61,9 @@ pub struct Graphics {
     // this needs to be first to be dropped first
     framebuffer: Framebuffer,
     frame_start: Instant,
+    fps_timer: Instant,
+    fps_frames: u32,
+    fps: u32,
 
     drm_fb: drmfb::Handle,
     buffer_object: BufferObject<()>,
@@ -98,10 +101,14 @@ impl Graphics {
 
         let framebuffer = Framebuffer::load(egl.gl(), drm.size())?;
         let frame_start = Instant::now();
+        let fps_timer = frame_start;
 
         Ok(Self {
             framebuffer,
             frame_start,
+            fps_timer,
+            fps_frames: 0,
+            fps: 0,
             drm_fb,
             buffer_object,
             drm,
@@ -155,8 +162,24 @@ impl Graphics {
 
         std::thread::sleep(Self::FRAME_DURATION.saturating_sub(self.frame_start.elapsed()));
         self.frame_start = Instant::now();
+        self.update_fps();
 
         Ok(())
+    }
+
+    #[must_use]
+    pub fn fps(&self) -> u32 {
+        self.fps
+    }
+
+    fn update_fps(&mut self) {
+        self.fps_frames = self.fps_frames.saturating_add(1);
+        let elapsed = self.fps_timer.elapsed();
+        if elapsed >= Duration::from_secs(1) {
+            self.fps = ((self.fps_frames as f64) / elapsed.as_secs_f64()).round() as u32;
+            self.fps_frames = 0;
+            self.fps_timer = Instant::now();
+        }
     }
 }
 

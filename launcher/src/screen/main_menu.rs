@@ -11,7 +11,6 @@ pub struct MainMenu {
 
     test_bool: bool,
     test_int: i32,
-    selected_mode: usize,
 }
 
 impl MainMenu {
@@ -21,7 +20,6 @@ impl MainMenu {
             ui,
             test_bool: false,
             test_int: 50,
-            selected_mode: 0,
         }
     }
 }
@@ -31,7 +29,7 @@ impl Screen for MainMenu {
         self.ui.update_input(input);
         self.ui.begin_frame();
 
-        self.ui.set_layout_width(140);
+        self.ui.set_layout_width(180);
         if self.ui.button("Start Game") {
             return Some(Box::new(GameMenu::init(self.ui.font())));
         }
@@ -40,12 +38,7 @@ impl Screen for MainMenu {
         self.ui.progress_bar(self.test_int, 0..=100);
         self.ui.label(&format!("Volume: {}", self.test_int));
 
-        self.ui.label("Difficulty");
-        self.ui.radio("Easy", &mut self.selected_mode, 0);
-        self.ui.radio("Normal", &mut self.selected_mode, 1);
-        self.ui.radio("Hard", &mut self.selected_mode, 2);
-
-        self.ui.spacer(4);
+        self.ui.separator();
         self.ui.begin_columns(2);
         self.ui.label("Left Column");
         self.ui.button("Alpha");

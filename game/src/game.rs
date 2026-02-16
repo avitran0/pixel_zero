@@ -36,6 +36,11 @@ impl Game {
             let mut frame = Frame::default();
 
             frame.draw_text(&self.font, "text here", ivec2(0, 0));
+            frame.draw_text(
+                &self.font,
+                &format!("FPS: {}", self.graphics.fps()),
+                ivec2(0, self.font.glyph_size().y.cast_signed()),
+            );
 
             self.graphics.present_frame(&frame).unwrap();
         }

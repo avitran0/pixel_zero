@@ -1,4 +1,6 @@
 use pixel_zero::{
+    WIDTH,
+    glam::ivec2,
     graphics::{Font, Frame, Graphics, color::Color},
     input::{Button, Input},
 };
@@ -8,7 +10,7 @@ use crate::screen::{Screen, main_menu::MainMenu};
 pub struct Launcher {
     graphics: Graphics,
     input: Input,
-    _font: Font,
+    font: Font,
     screen: Box<dyn Screen>,
     exit: bool,
 }
@@ -24,7 +26,7 @@ impl Launcher {
         Self {
             graphics,
             input: Input::default(),
-            _font: font,
+            font,
             screen,
             exit: false,
         }
@@ -42,6 +44,12 @@ impl Launcher {
             frame.set_clear_color(Color::rgb(100, 150, 240));
 
             self.screen.render(&mut frame);
+
+            frame.draw_text(
+                &self.font,
+                &format!("FPS: {}", self.graphics.fps()),
+                ivec2(WIDTH as i32 - 40, 0),
+            );
 
             if let Some(screen) = screen {
                 self.screen = screen;
