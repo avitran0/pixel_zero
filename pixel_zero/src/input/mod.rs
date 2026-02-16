@@ -1,6 +1,5 @@
 use std::{
     fs::File,
-    io::Read,
     os::{
         fd::AsRawFd,
         unix::fs::{FileTypeExt, OpenOptionsExt},
@@ -8,21 +7,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-use nix::ioctl_read_buf;
+use nix::{ioctl_read, ioctl_read_buf};
 use strum::{EnumCount, EnumIter};
 
 use crate::input::keys::*;
 
 mod keys;
-
-#[repr(C)]
-#[derive(Debug)]
-struct InputEvent {
-    time: nix::libc::timeval,
-    kind: u16,
-    code: u16,
-    value: i32,
-}
 
 /// Button layout similar to a Gameboy Advance.
 #[derive(Debug, Clone, Copy, EnumCount, EnumIter)]
@@ -66,9 +56,10 @@ impl Button {
 }
 
 const SCAN_INTERVAL: Duration = Duration::from_secs(5);
+const KEY_STATE_BYTES: usize = 1024;
 
 pub struct Input {
-    device_files: Vec<File>,
+    devices: Vec<Device>,
     last_scanned: Instant,
     current_state: [bool; Button::COUNT],
     previous_state: [bool; Button::COUNT],
@@ -76,10 +67,10 @@ pub struct Input {
 
 impl Default for Input {
     fn default() -> Self {
-        let device_files = Self::scan_devices();
-        log::info!("found {} input devices", device_files.len());
+        let devices = Self::scan_devices();
+        log::info!("found {} input devices", devices.len());
         Self {
-            device_files,
+            devices,
             last_scanned: Instant::now(),
             current_state: [false; Button::COUNT],
             previous_state: [false; Button::COUNT],
@@ -87,10 +78,14 @@ impl Default for Input {
     }
 }
 
-ioctl_read_buf!(key_bits, b'E', 0x20 + EV_KEY, u8);
+ioctl_read_buf!(key_state, b'E', 0x18, u8);
+ioctl_read!(abs_x, b'E', 0x40 + ABS_X, InputAbsInfo);
+ioctl_read!(abs_y, b'E', 0x40 + ABS_Y, InputAbsInfo);
+ioctl_read!(abs_hat0x, b'E', 0x40 + ABS_HAT0X, InputAbsInfo);
+ioctl_read!(abs_hat0y, b'E', 0x40 + ABS_HAT0Y, InputAbsInfo);
 
 impl Input {
-    fn scan_devices() -> Vec<File> {
+    fn scan_devices() -> Vec<Device> {
         let mut devices = Vec::new();
 
         for entry in std::fs::read_dir("/dev/input").unwrap() {
@@ -123,117 +118,29 @@ impl Input {
                 continue;
             };
 
-            let mut bits = [0u8; 1024];
-            if unsafe { key_bits(file.as_raw_fd(), &mut bits) }.is_err() {
+            let Some(kind) = DeviceKind::from_device(&file) else {
                 continue;
-            }
+            };
 
-            if !Self::has_bit(&bits, KEY_ESC) && !Self::has_bit(&bits, BTN_START) {
-                continue;
-            }
-
-            devices.push(file);
+            devices.push(Device { file, kind });
         }
         devices
-    }
-
-    fn has_bit(bits: &[u8], bit: u16) -> bool {
-        let byte = bits[(bit / 8) as usize];
-        let mask = 1 << (bit % 8);
-        byte & mask != 0
     }
 
     /// Updates the input state.
     /// Should be called once per game loop iteration, usually at the start.
     pub fn update(&mut self) {
         if self.last_scanned.elapsed() > SCAN_INTERVAL {
-            self.device_files = Self::scan_devices();
+            self.devices = Self::scan_devices();
             self.last_scanned = Instant::now();
         }
 
         self.previous_state = self.current_state;
+        self.current_state = [false; Button::COUNT];
 
-        for device in &mut self.device_files {
-            let mut buf = [0u8; std::mem::size_of::<InputEvent>()];
-
-            loop {
-                match device.read(&mut buf) {
-                    Ok(0) => break,
-                    Ok(n) => {
-                        if n != buf.len() {
-                            continue;
-                        }
-                    }
-                    Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => break,
-                    Err(_) => break,
-                }
-
-                let event = unsafe {
-                    let ptr = buf.as_ptr().cast::<InputEvent>();
-                    &*ptr
-                };
-
-                match event.kind {
-                    EV_KEY => {
-                        if let Some((button, state)) = Self::handle_key_event(event) {
-                            self.current_state[button.index()] = state;
-                        }
-                    }
-                    EV_ABS => {
-                        if let Some(axis_value) = Self::handle_abs_event(event) {
-                            axis_value.apply(&mut self.current_state);
-                        }
-                    }
-                    _ => {}
-                }
-            }
+        for device in &self.devices {
+            device.poll(&mut self.current_state);
         }
-    }
-
-    fn handle_key_event(event: &InputEvent) -> Option<(Button, bool)> {
-        let button = match event.code {
-            KEY_UP | BTN_DPAD_UP => Button::Up,
-            KEY_DOWN | BTN_DPAD_DOWN => Button::Down,
-            KEY_LEFT | BTN_DPAD_LEFT => Button::Left,
-            KEY_RIGHT | BTN_DPAD_RIGHT => Button::Right,
-
-            KEY_A | BTN_SOUTH => Button::A,
-            KEY_B | BTN_EAST => Button::B,
-            KEY_DOT | BTN_START => Button::Start,
-            KEY_COMMA | BTN_SELECT => Button::Select,
-            KEY_L | BTN_TL => Button::L,
-            KEY_R | BTN_TR => Button::R,
-
-            KEY_ESC => std::process::exit(0),
-
-            _ => return None,
-        };
-
-        let state = event.value != 0;
-
-        Some((button, state))
-    }
-
-    fn handle_abs_event(event: &InputEvent) -> Option<AxisValue> {
-        Some(match event.code {
-            ABS_X => AxisValue {
-                axis: Axis::X,
-                value: event.value,
-            },
-            ABS_Y => AxisValue {
-                axis: Axis::Y,
-                value: event.value,
-            },
-            ABS_HAT0X => AxisValue {
-                axis: Axis::X,
-                value: event.value * THRESHOLD,
-            },
-            ABS_HAT0Y => AxisValue {
-                axis: Axis::Y,
-                value: event.value * THRESHOLD,
-            },
-            _ => return None,
-        })
     }
 
     /// Whether a `Button` is pressed.
@@ -263,6 +170,167 @@ impl Input {
 }
 
 #[derive(Debug)]
+struct Device {
+    file: File,
+    kind: DeviceKind,
+}
+
+impl Device {
+    fn poll(&self, state: &mut [bool; Button::COUNT]) {
+        if self.kind.has_keys() {
+            self.poll_keys(state);
+        }
+
+        if self.kind.has_abs() {
+            self.poll_abs(state);
+        }
+    }
+
+    fn poll_keys(&self, state: &mut [bool; Button::COUNT]) {
+        let mut bits = [0u8; KEY_STATE_BYTES];
+        if unsafe { key_state(self.file.as_raw_fd(), &mut bits) }.is_err() {
+            return;
+        }
+
+        if Self::has_bit(&bits, KEY_ESC) {
+            std::process::exit(0);
+        }
+
+        state[Button::Up.index()] |=
+            Self::has_bit(&bits, KEY_UP) || Self::has_bit(&bits, BTN_DPAD_UP);
+        state[Button::Down.index()] |=
+            Self::has_bit(&bits, KEY_DOWN) || Self::has_bit(&bits, BTN_DPAD_DOWN);
+        state[Button::Left.index()] |=
+            Self::has_bit(&bits, KEY_LEFT) || Self::has_bit(&bits, BTN_DPAD_LEFT);
+        state[Button::Right.index()] |=
+            Self::has_bit(&bits, KEY_RIGHT) || Self::has_bit(&bits, BTN_DPAD_RIGHT);
+
+        state[Button::A.index()] |= Self::has_bit(&bits, KEY_A) || Self::has_bit(&bits, BTN_SOUTH);
+        state[Button::B.index()] |= Self::has_bit(&bits, KEY_B) || Self::has_bit(&bits, BTN_EAST);
+        state[Button::Start.index()] |=
+            Self::has_bit(&bits, KEY_DOT) || Self::has_bit(&bits, BTN_START);
+        state[Button::Select.index()] |=
+            Self::has_bit(&bits, KEY_COMMA) || Self::has_bit(&bits, BTN_SELECT);
+        state[Button::L.index()] |= Self::has_bit(&bits, KEY_L) || Self::has_bit(&bits, BTN_TL);
+        state[Button::R.index()] |= Self::has_bit(&bits, KEY_R) || Self::has_bit(&bits, BTN_TR);
+    }
+
+    fn poll_abs(&self, state: &mut [bool; Button::COUNT]) {
+        if let Some(value) = self.read_abs_x() {
+            AxisValue {
+                axis: Axis::X,
+                value,
+            }
+            .apply(state);
+        }
+
+        if let Some(value) = self.read_abs_y() {
+            AxisValue {
+                axis: Axis::Y,
+                value,
+            }
+            .apply(state);
+        }
+
+        if let Some(value) = self.read_abs_hat0x() {
+            AxisValue {
+                axis: Axis::X,
+                value: value * THRESHOLD,
+            }
+            .apply(state);
+        }
+
+        if let Some(value) = self.read_abs_hat0y() {
+            AxisValue {
+                axis: Axis::Y,
+                value: value * THRESHOLD,
+            }
+            .apply(state);
+        }
+    }
+
+    fn read_abs_x(&self) -> Option<i32> {
+        let mut info = InputAbsInfo::default();
+        unsafe { abs_x(self.file.as_raw_fd(), &mut info) }
+            .ok()
+            .map(|_| info.value)
+    }
+
+    fn read_abs_y(&self) -> Option<i32> {
+        let mut info = InputAbsInfo::default();
+        unsafe { abs_y(self.file.as_raw_fd(), &mut info) }
+            .ok()
+            .map(|_| info.value)
+    }
+
+    fn read_abs_hat0x(&self) -> Option<i32> {
+        let mut info = InputAbsInfo::default();
+        unsafe { abs_hat0x(self.file.as_raw_fd(), &mut info) }
+            .ok()
+            .map(|_| info.value)
+    }
+
+    fn read_abs_hat0y(&self) -> Option<i32> {
+        let mut info = InputAbsInfo::default();
+        unsafe { abs_hat0y(self.file.as_raw_fd(), &mut info) }
+            .ok()
+            .map(|_| info.value)
+    }
+
+    fn has_bit(bits: &[u8], bit: u16) -> bool {
+        let byte = bits[(bit / 8) as usize];
+        let mask = 1 << (bit % 8);
+        byte & mask != 0
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum DeviceKind {
+    Keys,
+    Abs,
+    KeysAndAbs,
+}
+
+impl DeviceKind {
+    fn from_device(file: &File) -> Option<Self> {
+        let mut bits = [0u8; KEY_STATE_BYTES];
+        let has_keys = unsafe { key_state(file.as_raw_fd(), &mut bits) }.is_ok();
+
+        let mut info = InputAbsInfo::default();
+        let has_abs = unsafe { abs_x(file.as_raw_fd(), &mut info) }.is_ok()
+            || unsafe { abs_y(file.as_raw_fd(), &mut info) }.is_ok()
+            || unsafe { abs_hat0x(file.as_raw_fd(), &mut info) }.is_ok()
+            || unsafe { abs_hat0y(file.as_raw_fd(), &mut info) }.is_ok();
+
+        match (has_keys, has_abs) {
+            (true, true) => Some(Self::KeysAndAbs),
+            (true, false) => Some(Self::Keys),
+            (false, true) => Some(Self::Abs),
+            (false, false) => None,
+        }
+    }
+
+    fn has_keys(self) -> bool {
+        matches!(self, Self::Keys | Self::KeysAndAbs)
+    }
+
+    fn has_abs(self) -> bool {
+        matches!(self, Self::Abs | Self::KeysAndAbs)
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Default, Clone, Copy)]
+struct InputAbsInfo {
+    value: i32,
+    minimum: i32,
+    maximum: i32,
+    fuzz: i32,
+    flat: i32,
+    resolution: i32,
+}
+
+#[derive(Debug)]
 struct AxisValue {
     axis: Axis,
     value: i32,
@@ -271,8 +339,8 @@ struct AxisValue {
 impl AxisValue {
     fn apply(&self, button_state: &mut [bool; Button::COUNT]) {
         let (negative, positive) = self.axis.buttons();
-        button_state[negative.index()] = self.value <= -DEADZONE;
-        button_state[positive.index()] = self.value >= DEADZONE;
+        button_state[negative.index()] |= self.value <= -DEADZONE;
+        button_state[positive.index()] |= self.value >= DEADZONE;
     }
 }
 

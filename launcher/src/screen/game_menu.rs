@@ -2,7 +2,7 @@ use std::fs::File;
 
 use pixel_zero::{
     glam::{ivec2, uvec2},
-    graphics::{Color, Font, Frame, Graphics},
+    graphics::{Color, Font, Frame},
     input::{Button, Input},
     io::ReadBytes as _,
     meta::{GameInfo, read_metadata},
@@ -59,17 +59,18 @@ impl Screen for GameMenu {
         None
     }
 
-    fn render(&self, frame: &mut Frame, font: &Font) {
+    fn render(&self, frame: &mut Frame) {
+        let font = self.ui.font();
         let mut offset = 0;
         for game in &self.games {
-            frame.draw_text(font, &game.name, ivec2(200, offset));
+            frame.draw_text(&font, &game.name, ivec2(200, offset));
             offset += font.glyph_size().y.cast_signed();
         }
 
         for (index, button) in self.button_state.iter().enumerate() {
             if *button {
                 let button = Button::from_usize(index).unwrap();
-                frame.draw_text(font, &format!("{button:?}"), ivec2(200, offset));
+                frame.draw_text(&font, &format!("{button:?}"), ivec2(200, offset));
                 offset += font.glyph_size().y.cast_signed();
             }
         }

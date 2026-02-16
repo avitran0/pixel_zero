@@ -8,7 +8,7 @@ use crate::screen::{Screen, main_menu::MainMenu};
 pub struct Launcher {
     graphics: Graphics,
     input: Input,
-    font: Font,
+    _font: Font,
     screen: Box<dyn Screen>,
     exit: bool,
 }
@@ -24,7 +24,7 @@ impl Launcher {
         Self {
             graphics,
             input: Input::default(),
-            font,
+            _font: font,
             screen,
             exit: false,
         }
@@ -41,7 +41,7 @@ impl Launcher {
             let mut frame = Frame::default();
             frame.set_clear_color(Color::rgb(100, 150, 240));
 
-            self.screen.render(&mut frame, &self.font);
+            self.screen.render(&mut frame);
 
             if let Some(screen) = screen {
                 self.screen = screen;

@@ -1,6 +1,3 @@
-pub const EV_KEY: u16 = 0x01;
-pub const EV_ABS: u16 = 0x03;
-
 pub const KEY_ESC: u16 = 1;
 
 pub const KEY_A: u16 = 30;

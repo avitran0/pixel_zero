@@ -38,7 +38,7 @@ impl Screen for MainMenu {
         None
     }
 
-    fn render(&self, frame: &mut Frame, font: &Font) {
+    fn render(&self, frame: &mut Frame) {
         self.ui.render(frame);
     }
 }
