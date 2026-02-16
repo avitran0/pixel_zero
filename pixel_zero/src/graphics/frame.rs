@@ -50,10 +50,6 @@ impl Frame {
         self.clear_color = color;
     }
 
-    pub(crate) fn add_command(&mut self, command: DrawCommand) {
-        self.draw_commands.push(command);
-    }
-
     pub(crate) fn add_commands(&mut self, commands: &[DrawCommand]) {
         self.draw_commands.extend_from_slice(commands);
     }

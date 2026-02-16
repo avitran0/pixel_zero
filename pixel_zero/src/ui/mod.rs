@@ -5,9 +5,10 @@ use std::sync::Arc;
 
 use glam::{IVec2, UVec2, ivec2, uvec2};
 use parking_lot::Mutex;
+use strum::IntoEnumIterator as _;
 
 use crate::graphics::frame::DrawCommand;
-use crate::graphics::{Color, Font, Frame, Graphics, GraphicsError};
+use crate::graphics::{Color, Font, Frame};
 use crate::input::{Button, Input};
 use crate::{HEIGHT, WIDTH};
 
@@ -34,45 +35,63 @@ impl Ui {
         let mut inner = self.0.lock();
         inner.input = UiInput::from_input(input);
     }
-}
 
-impl Ui {
-    pub fn start_frame(&self) -> UiFrame {
-        let (font, input, focus_index, last_widget_count, style) = {
-            let inner = self.0.lock();
-            (
-                inner.font.clone(),
-                inner.input,
-                inner.focus_index,
-                inner.last_widget_count,
-                inner.style,
-            )
-        };
-
-        let mut focus_index = focus_index;
-        if last_widget_count > 0 {
-            if input.just_pressed(Button::Up) {
+    pub fn begin_frame(&self) {
+        let mut inner = self.0.lock();
+        let mut focus_index = inner.focus_index;
+        if inner.last_widget_count > 0 {
+            if inner.input.just_pressed(Button::Up) {
                 focus_index = focus_index.saturating_sub(1);
             }
-            if input.just_pressed(Button::Down) {
-                focus_index = (focus_index + 1).min(last_widget_count - 1);
+            if inner.input.just_pressed(Button::Down) {
+                focus_index = (focus_index + 1).min(inner.last_widget_count - 1);
             }
         }
 
-        let mut frame = Frame::default();
-        frame.set_clear_color(style.background);
+        inner.frame_focus_index = focus_index;
+        inner.widget_index = 0;
+        inner.cursor = ivec2(inner.style.padding, inner.style.padding);
+        inner.layout_width = WIDTH.saturating_sub((inner.style.padding * 2).max(0) as u32);
+        inner.draw_commands.clear();
+    }
 
-        UiFrame {
-            context: self.clone(),
-            draw_commands: Vec::new(),
-            font,
-            input,
-            style,
-            cursor: ivec2(style.padding, style.padding),
-            layout_width: WIDTH.saturating_sub((style.padding * 2).max(0) as u32),
-            focus_index,
-            widget_index: 0,
+    pub fn clear(&self) {
+        let mut inner = self.0.lock();
+        inner.draw_commands.clear();
+        inner.widget_index = 0;
+        inner.cursor = ivec2(inner.style.padding, inner.style.padding);
+    }
+
+    pub fn label(&self, text: &str) {
+        let mut inner = self.0.lock();
+        inner.label(text);
+    }
+
+    pub fn button(&self, text: &str) -> bool {
+        let mut inner = self.0.lock();
+        inner.button(text)
+    }
+
+    pub fn checkbox(&self, text: &str, value: &mut bool) -> bool {
+        let mut inner = self.0.lock();
+        inner.checkbox(text, value)
+    }
+
+    pub fn slider(&self, text: &str, value: &mut f32, range: RangeInclusive<f32>) -> bool {
+        let mut inner = self.0.lock();
+        inner.slider(text, value, range)
+    }
+
+    pub fn render(&self, frame: &mut Frame) {
+        let mut inner = self.0.lock();
+        let widget_count = inner.widget_index;
+        if widget_count > 0 {
+            inner.focus_index = inner.frame_focus_index.min(widget_count - 1);
+        } else {
+            inner.focus_index = 0;
         }
+        inner.last_widget_count = widget_count;
+        frame.add_commands(&inner.draw_commands);
     }
 }
 
@@ -83,6 +102,11 @@ pub struct UiInner {
     focus_index: usize,
     last_widget_count: usize,
     style: UiStyle,
+    draw_commands: Vec<DrawCommand>,
+    cursor: IVec2,
+    layout_width: u32,
+    frame_focus_index: usize,
+    widget_index: usize,
 }
 
 impl UiInner {
@@ -93,24 +117,17 @@ impl UiInner {
             focus_index: 0,
             last_widget_count: 0,
             style: UiStyle::default(),
+            draw_commands: Vec::new(),
+            cursor: ivec2(0, 0),
+            layout_width: WIDTH,
+            frame_focus_index: 0,
+            widget_index: 0,
         }
     }
 }
 
-pub struct UiFrame {
-    context: Ui,
-    draw_commands: Vec<DrawCommand>,
-    font: Font,
-    input: UiInput,
-    style: UiStyle,
-    cursor: IVec2,
-    layout_width: u32,
-    focus_index: usize,
-    widget_index: usize,
-}
-
-impl UiFrame {
-    pub fn label(&mut self, text: &str) {
+impl UiInner {
+    fn label(&mut self, text: &str) {
         let position = self.cursor;
         self.draw_commands.push(DrawCommand::Text {
             font: self.font.clone(),
@@ -121,8 +138,8 @@ impl UiFrame {
         self.advance(height + self.style.spacing);
     }
 
-    pub fn button(&mut self, text: &str) -> bool {
-        let is_focused = self.widget_index == self.focus_index;
+    fn button(&mut self, text: &str) -> bool {
+        let is_focused = self.widget_index == self.frame_focus_index;
         let button_size = self.button_size();
         let position = self.cursor;
 
@@ -164,8 +181,8 @@ impl UiFrame {
         is_focused && self.input.just_pressed(Button::A)
     }
 
-    pub fn checkbox(&mut self, text: &str, value: &mut bool) -> bool {
-        let is_focused = self.widget_index == self.focus_index;
+    fn checkbox(&mut self, text: &str, value: &mut bool) -> bool {
+        let is_focused = self.widget_index == self.frame_focus_index;
         let size = self.style.checkbox_size;
         let row_height = size.max(self.font.glyph_size().y) as i32;
         let position = self.cursor;
@@ -182,8 +199,8 @@ impl UiFrame {
 
         if *value {
             self.draw_commands.push(DrawCommand::Rect {
-                position: box_position,
-                size: box_size,
+                position: box_position + 2,
+                size: box_size - 4,
                 color: self.style.checkbox_fill,
                 filled: true,
             });
@@ -216,10 +233,10 @@ impl UiFrame {
         changed
     }
 
-    pub fn slider(&mut self, text: &str, value: &mut f32, range: RangeInclusive<f32>) -> bool {
+    fn slider(&mut self, text: &str, value: &mut f32, range: RangeInclusive<f32>) -> bool {
         self.label(text);
 
-        let is_focused = self.widget_index == self.focus_index;
+        let is_focused = self.widget_index == self.frame_focus_index;
         let slider_height = self.style.slider_height as i32;
         let position = self.cursor;
         let size = uvec2(self.layout_width, self.style.slider_height);
@@ -290,18 +307,6 @@ impl UiFrame {
         changed
     }
 
-    pub fn render(&self, frame: &mut Frame) {
-        let widget_count = self.widget_index;
-        let mut inner = self.context.0.lock();
-        if widget_count > 0 {
-            inner.focus_index = self.focus_index.min(widget_count - 1);
-        } else {
-            inner.focus_index = 0;
-        }
-        inner.last_widget_count = widget_count;
-        frame.add_commands(&self.draw_commands);
-    }
-
     fn button_size(&self) -> UVec2 {
         let height = self.style.button_height.max(self.font.glyph_size().y + 6);
         uvec2(self.layout_width, height)
@@ -332,10 +337,8 @@ impl UiInput {
     fn from_input(input: &Input) -> Self {
         let pressed = *input.state();
         let mut just_pressed = [false; Button::BUTTON_COUNT];
-        for index in 0..Button::BUTTON_COUNT {
-            if let Some(button) = Button::from_usize(index) {
-                just_pressed[index] = input.just_pressed(button);
-            }
+        for button in Button::iter() {
+            just_pressed[button.index()] = input.just_pressed(button);
         }
 
         Self {
@@ -372,7 +375,6 @@ struct UiStyle {
     slider_track_height: u32,
     slider_knob_width: u32,
     slider_knob_height: u32,
-    background: Color,
     widget_bg: Color,
     widget_bg_focused: Color,
     widget_border: Color,
@@ -388,13 +390,12 @@ impl Default for UiStyle {
         Self {
             padding: 8,
             spacing: 6,
-            button_height: 20,
+            button_height: 16,
             checkbox_size: 12,
-            slider_height: 16,
-            slider_track_height: 4,
+            slider_height: 12,
+            slider_track_height: 2,
             slider_knob_width: 6,
             slider_knob_height: 12,
-            background: Color::rgb(24, 24, 24),
             widget_bg: Color::rgb(50, 50, 50),
             widget_bg_focused: Color::rgb(70, 70, 70),
             widget_border: Color::rgb(90, 90, 90),

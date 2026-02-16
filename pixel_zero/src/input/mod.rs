@@ -9,7 +9,7 @@ use std::{
 };
 
 use nix::ioctl_read_buf;
-use strum::EnumCount;
+use strum::{EnumCount, EnumIter};
 
 use crate::input::keys::*;
 
@@ -25,7 +25,7 @@ struct InputEvent {
 }
 
 /// Button layout similar to a Gameboy Advance.
-#[derive(Debug, Clone, Copy, EnumCount)]
+#[derive(Debug, Clone, Copy, EnumCount, EnumIter)]
 pub enum Button {
     Up,
     Down,

@@ -6,17 +6,19 @@ use pixel_zero::{
     input::{Button, Input},
     io::ReadBytes as _,
     meta::{GameInfo, read_metadata},
+    ui::Ui,
 };
 
 use crate::screen::Screen;
 
 pub struct GameMenu {
+    ui: Ui,
     games: Vec<GameInfo>,
     button_state: [bool; Button::BUTTON_COUNT],
 }
 
 impl GameMenu {
-    pub fn init(_graphics: &Graphics) -> Self {
+    pub fn init(font: &Font) -> Self {
         let exe_dir = std::env::current_exe().unwrap();
         let dir = exe_dir.parent().unwrap();
         let games: Vec<GameInfo> = std::fs::read_dir(dir)
@@ -40,9 +42,11 @@ impl GameMenu {
             if games.len() == 1 { "" } else { "s" }
         );
 
+        let ui = Ui::new(font.clone());
         let button_state = [false; Button::BUTTON_COUNT];
 
         Self {
+            ui,
             games,
             button_state,
         }
