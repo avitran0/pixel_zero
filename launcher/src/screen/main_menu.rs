@@ -19,7 +19,7 @@ impl MainMenu {
         Self {
             ui,
             test_bool: false,
-            test_int: 50,
+            test_int: 5,
         }
     }
 }
@@ -34,8 +34,8 @@ impl Screen for MainMenu {
             return Some(Box::new(GameMenu::init(self.ui.font())));
         }
         self.ui.checkbox("Show FPS", &mut self.test_bool);
-        self.ui.slider("Volume", &mut self.test_int, 0..=100);
-        self.ui.progress_bar(self.test_int, 0..=100);
+        self.ui.slider("Volume", &mut self.test_int, 0..=10, 1);
+        self.ui.progress_bar(self.test_int, 0..=10);
         self.ui.label(&format!("Volume: {}", self.test_int));
 
         self.ui.separator();

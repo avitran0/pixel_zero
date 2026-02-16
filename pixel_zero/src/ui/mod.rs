@@ -78,17 +78,12 @@ impl Ui {
         inner.checkbox(text, value)
     }
 
-    pub fn radio(&self, text: &str, selected: &mut usize, index: usize) -> bool {
-        let mut inner = self.0.lock();
-        inner.radio(text, selected, index)
-    }
-
-    pub fn slider<T>(&self, text: &str, value: &mut T, range: RangeInclusive<T>) -> bool
+    pub fn slider<T>(&self, text: &str, value: &mut T, range: RangeInclusive<T>, speed: T) -> bool
     where
-        T: Num + Copy + PartialOrd + ToPrimitive + NumCast,
+        T: Num + Copy + PartialOrd + ToPrimitive + NumCast + std::fmt::Display,
     {
         let mut inner = self.0.lock();
-        inner.slider(text, value, range)
+        inner.number(text, value, range, speed)
     }
 
     pub fn progress_bar<T>(&self, value: T, range: RangeInclusive<T>)
@@ -250,7 +245,12 @@ impl UiInner {
         self.draw_rect(box_position, box_size, self.style.widget_border, false);
 
         if *value {
-            self.draw_rect(box_position + 2, box_size - 4, self.style.checkbox_fill, true);
+            self.draw_rect(
+                box_position + 2,
+                box_size - 4,
+                self.style.checkbox_fill,
+                true,
+            );
         }
 
         let text_x = position.x + size.cast_signed() + self.style.spacing;
@@ -276,71 +276,34 @@ impl UiInner {
         changed
     }
 
-    fn radio(&mut self, text: &str, selected: &mut usize, index: usize) -> bool {
-        let is_focused = self.widget_index == self.frame_focus_index;
-        let size = self.style.radio_size;
-        let row_height = size.max(self.font.glyph_size().y).cast_signed();
-        let text_size = self.font.text_size(text);
-        let width = (size.cast_signed() + self.style.spacing + text_size.x.cast_signed())
-            .max(size.cast_signed())
-            .cast_unsigned();
-        let position = self.place_widget(uvec2(width, row_height.cast_unsigned()));
-
-        let box_position = position;
-        let box_size = uvec2(size, size);
-        self.draw_rect(box_position, box_size, self.style.widget_border, false);
-
-        if *selected == index {
-            let inset = 3u32.min(size.saturating_sub(1));
-            let inset_i = inset.cast_signed();
-            self.draw_rect(
-                box_position + ivec2(inset_i, inset_i),
-                box_size.saturating_sub(uvec2(inset * 2, inset * 2)),
-                self.style.radio_fill,
-                true,
-            );
-        }
-
-        let text_x = position.x + size.cast_signed() + self.style.spacing;
-        let text_y = position.y + ((row_height - text_size.y.cast_signed()) / 2).max(0);
-        self.draw_text(text, ivec2(text_x, text_y));
-
-        if is_focused {
-            let outline_offset = ivec2(-1, -1);
-            let outline_size = uvec2(
-                (width.cast_signed() + 2).cast_unsigned(),
-                (row_height + 1).cast_unsigned(),
-            );
-            self.draw_focus_outline(position + outline_offset, outline_size);
-        }
-
-        let mut changed = false;
-        if is_focused && self.input.just_pressed(Button::A) && *selected != index {
-            *selected = index;
-            changed = true;
-        }
-
-        self.widget_index += 1;
-        changed
-    }
-
-    fn slider<T>(&mut self, text: &str, value: &mut T, range: RangeInclusive<T>) -> bool
+    fn number<T>(&mut self, text: &str, value: &mut T, range: RangeInclusive<T>, speed: T) -> bool
     where
-        T: Num + Copy + PartialOrd + ToPrimitive + NumCast,
+        T: Num + Copy + PartialOrd + ToPrimitive + NumCast + std::fmt::Display,
     {
         self.label(text);
 
         let is_focused = self.widget_index == self.frame_focus_index;
-        let slider_height = self.style.slider_height.cast_signed();
-        let size = uvec2(self.layout_width, self.style.slider_height);
+        let row_height = self.style.button_height.max(self.font.glyph_size().y + 6);
+        let size = uvec2(self.layout_width, row_height);
         let position = self.place_widget(size);
 
-        let track_height = self.style.slider_track_height.cast_signed();
-        let track_y = position.y + ((slider_height - track_height) / 2).max(0);
-        let track_position = ivec2(position.x, track_y);
-        let track_size = uvec2(size.x, track_height.cast_unsigned());
+        let fill = if is_focused {
+            self.style.widget_bg_focused
+        } else {
+            self.style.widget_bg
+        };
+        self.draw_rect(position, size, fill, true);
+        self.draw_rect(position, size, self.style.widget_border, false);
 
-        self.draw_rect(track_position, track_size, self.style.slider_track, true);
+        let value_text = format!("< {} >", value);
+        let text_size = self.font.text_size(&value_text);
+        let text_x = position.x + ((size.x.cast_signed() - text_size.x.cast_signed()) / 2).max(0);
+        let text_y = position.y + ((size.y.cast_signed() - text_size.y.cast_signed()) / 2).max(0);
+        self.draw_text(&value_text, ivec2(text_x, text_y));
+
+        if is_focused {
+            self.draw_focus_outline(position, size);
+        }
 
         let (min, max) = normalized_range(range);
         let Some(min_f) = min.to_f32() else {
@@ -352,49 +315,28 @@ impl UiInner {
         let Some(value_f) = value.to_f32() else {
             return false;
         };
-
-        let range_size = (max_f - min_f).max(0.0001);
-        let normalized = ((value_f - min_f) / range_size).clamp(0.0, 1.0);
-        let knob_x = position.x + (normalized * (size.x.saturating_sub(1)) as f32) as i32;
-        let knob_half = (self.style.slider_knob_width / 2).cast_signed();
-        let knob_position = ivec2(
-            knob_x - knob_half,
-            position.y + ((slider_height - self.style.slider_knob_height.cast_signed()) / 2).max(0),
-        );
-        let knob_size = uvec2(self.style.slider_knob_width, self.style.slider_knob_height);
-
-        let fill_width = (normalized * size.x as f32) as u32;
-        if fill_width > 0 {
-            self.draw_rect(
-                track_position,
-                uvec2(fill_width, track_height.cast_unsigned()),
-                self.style.slider_fill,
-                true,
-            );
-        }
-
-        self.draw_rect(knob_position, knob_size, self.style.slider_knob, true);
-
-        if is_focused {
-            self.draw_focus_outline(position, size);
-        }
+        let Some(speed_f) = speed.to_f32() else {
+            return false;
+        };
 
         let mut changed = false;
         if is_focused {
-            let step = (range_size / 100.0).max(0.01);
-            let mut next_value = value_f;
-            if self.input.is_pressed(Button::Left) {
-                next_value -= step;
-            }
-            if self.input.is_pressed(Button::Right) {
-                next_value += step;
-            }
-            next_value = next_value.clamp(min_f, max_f);
-            if (next_value - value_f).abs() > f32::EPSILON
-                && let Some(next_value) = NumCast::from(next_value)
-            {
-                *value = next_value;
-                changed = true;
+            let step = speed_f.abs();
+            if step > 0.0 {
+                let mut next_value = value_f;
+                if self.input.just_pressed(Button::Left) {
+                    next_value -= step;
+                }
+                if self.input.just_pressed(Button::Right) {
+                    next_value += step;
+                }
+                next_value = next_value.clamp(min_f, max_f);
+                if (next_value - value_f).abs() > f32::EPSILON
+                    && let Some(next_value) = NumCast::from(next_value)
+                {
+                    *value = next_value;
+                    changed = true;
+                }
             }
         }
 
@@ -425,7 +367,12 @@ impl UiInner {
         self.draw_rect(position, size, self.style.progress_track, true);
 
         if fill_width > 0 {
-            self.draw_rect(position, uvec2(fill_width, size.y), self.style.progress_fill, true);
+            self.draw_rect(
+                position,
+                uvec2(fill_width, size.y),
+                self.style.progress_fill,
+                true,
+            );
         }
 
         self.draw_rect(position, size, self.style.widget_border, false);
@@ -550,26 +497,17 @@ impl UiInner {
 
 #[derive(Debug, Clone, Copy)]
 struct UiInput {
-    pressed: [bool; Button::BUTTON_COUNT],
     just_pressed: [bool; Button::BUTTON_COUNT],
 }
 
 impl UiInput {
     fn from_input(input: &Input) -> Self {
-        let pressed = *input.state();
         let mut just_pressed = [false; Button::BUTTON_COUNT];
         for button in Button::iter() {
             just_pressed[button.index()] = input.just_pressed(button);
         }
 
-        Self {
-            pressed,
-            just_pressed,
-        }
-    }
-
-    fn is_pressed(&self, button: Button) -> bool {
-        self.pressed[button.index()]
+        Self { just_pressed }
     }
 
     fn just_pressed(&self, button: Button) -> bool {
@@ -580,7 +518,6 @@ impl UiInput {
 impl Default for UiInput {
     fn default() -> Self {
         Self {
-            pressed: [false; Button::BUTTON_COUNT],
             just_pressed: [false; Button::BUTTON_COUNT],
         }
     }
@@ -593,21 +530,12 @@ struct UiStyle {
     layout_width: Option<u32>,
     button_height: u32,
     checkbox_size: u32,
-    radio_size: u32,
-    slider_height: u32,
-    slider_track_height: u32,
-    slider_knob_width: u32,
-    slider_knob_height: u32,
     progress_height: u32,
     separator_thickness: u32,
     widget_bg: Color,
     widget_bg_focused: Color,
     widget_border: Color,
     checkbox_fill: Color,
-    radio_fill: Color,
-    slider_track: Color,
-    slider_fill: Color,
-    slider_knob: Color,
     progress_track: Color,
     progress_fill: Color,
     separator: Color,
@@ -622,21 +550,12 @@ impl Default for UiStyle {
             layout_width: None,
             button_height: 12,
             checkbox_size: 12,
-            radio_size: 12,
-            slider_height: 12,
-            slider_track_height: 2,
-            slider_knob_width: 6,
-            slider_knob_height: 12,
             progress_height: 6,
             separator_thickness: 1,
             widget_bg: Color::rgb(50, 50, 50),
             widget_bg_focused: Color::rgb(70, 70, 70),
             widget_border: Color::rgb(90, 90, 90),
             checkbox_fill: Color::rgb(220, 220, 220),
-            radio_fill: Color::rgb(220, 220, 220),
-            slider_track: Color::rgb(60, 60, 60),
-            slider_fill: Color::rgb(120, 120, 120),
-            slider_knob: Color::rgb(220, 220, 220),
             progress_track: Color::rgb(60, 60, 60),
             progress_fill: Color::rgb(120, 160, 220),
             separator: Color::rgb(80, 80, 80),
