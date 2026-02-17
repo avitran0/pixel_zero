@@ -18,6 +18,8 @@ use thiserror::Error;
 pub enum DrmError {
     #[error("I/O error: {0}")]
     IO(#[from] std::io::Error),
+    #[error("No suitable Mode found")]
+    NoMode,
     #[error("No Connectors found")]
     NoConnectors,
     #[error("No suitable CRTC found")]
@@ -84,11 +86,16 @@ impl Drm {
             None
         };
 
-        let mode = *connector
+        let mut modes: Vec<_> = connector
             .modes()
             .iter()
-            .find(|mode| mode.mode_type().contains(ModeTypeFlags::PREFERRED))
-            .unwrap_or_else(|| &connector.modes()[0]);
+            .filter(|mode| mode.mode_type().contains(ModeTypeFlags::PREFERRED))
+            .collect();
+        modes.sort_by(|a, b| {
+            (a.size().0 as u32 * a.size().1 as u32 * a.vrefresh())
+                .cmp(&(b.size().0 as u32 * b.size().1 as u32 * b.vrefresh()))
+        });
+        let mode = **modes.first().ok_or(DrmError::NoMode)?;
 
         let Some(crtc) = connector
             .encoders()
