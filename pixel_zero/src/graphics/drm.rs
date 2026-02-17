@@ -110,6 +110,8 @@ impl Drm {
             return Err(DrmError::NoCRTC);
         };
 
+        log::info!("screen size: {}x{}", mode.size().0, mode.size().1);
+
         Ok(Self {
             gpu: Arc::new(gpu),
             connector,
