@@ -120,8 +120,6 @@ impl Framebuffer {
             gl.active_texture(glow::TEXTURE0);
             gl.enable(glow::BLEND);
             gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
-            gl.disable(glow::LINE_SMOOTH);
-            gl.disable(glow::POLYGON_SMOOTH);
         }
 
         Ok(Self {
