@@ -68,9 +68,9 @@ pub struct Graphics {
     drm_fb: drmfb::Handle,
     buffer_object: BufferObject<()>,
 
-    drm: Drm,
-    gbm: Gbm,
     egl: Egl,
+    gbm: Gbm,
+    drm: Drm,
 
     _terminal_guard: TerminalGuard,
 }
