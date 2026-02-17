@@ -89,7 +89,9 @@ impl Drm {
         let mut modes: Vec<_> = connector
             .modes()
             .iter()
-            .filter(|mode| mode.mode_type().contains(ModeTypeFlags::PREFERRED))
+            .filter(|mode| {
+                mode.mode_type().contains(ModeTypeFlags::PREFERRED) && mode.vrefresh() >= 50
+            })
             .collect();
         modes.sort_by(|a, b| {
             (a.size().0 as u32 * a.size().1 as u32 * a.vrefresh())
