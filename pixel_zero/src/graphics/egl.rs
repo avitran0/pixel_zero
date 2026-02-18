@@ -62,6 +62,7 @@ impl Egl {
             instance.create_window_surface(display, config, gbm.surface().as_raw() as *mut _, None)
         }?;
         instance.make_current(display, Some(surface), Some(surface), Some(context))?;
+        instance.swap_interval(display, 0)?;
 
         let mut gl = unsafe {
             glow::Context::from_loader_function(|s| {
